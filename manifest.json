@@ -1,0 +1,17 @@
+{
+  "display_name": "白 · 蝶翼商店",
+  "loading_order": 250,
+  "dependencies": [],
+  "js": "index.js",
+  "author": "Local project · Codex assisted",
+  "version": "1.2.0",
+  "auto_update": false,
+  "hooks": {
+    "activate": "onActivate",
+    "enable": "onEnable",
+    "disable": "onDisable",
+    "delete": "onDelete",
+    "clean": "onDisable"
+  },
+  "minimum_client_version": "1.18.0"
+}

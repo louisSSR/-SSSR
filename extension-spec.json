@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "shiro-butterfly-shop",
+  "displayName": "白 · 蝶翼商店",
+  "author": "Local project · Codex assisted",
+  "version": "1.2.0",
+  "minimumClientVersion": "1.18.0",
+  "loadingOrder": 250,
+  "withCss": false,
+  "autoUpdate": false
+}

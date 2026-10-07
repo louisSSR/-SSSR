@@ -1,0 +1,465 @@
+{
+  "mate": {
+    "type": "chatSheets",
+    "version": 1,
+    "updateConfigUiSentinel": -1,
+    "globalInjectionConfig": {
+      "readableEntryPlacement": {
+        "position": "before_char",
+        "depth": 2,
+        "order": 99981
+      },
+      "wrapperPlacement": {
+        "position": "before_char",
+        "depth": 2,
+        "order": 99980
+      }
+    }
+  },
+  "sheet_shiro_overview": {
+    "uid": "sheet_shiro_overview",
+    "name": "蝴蝶·因果总览",
+    "content": [
+      [
+        "row_id",
+        "记录ID",
+        "本源账户",
+        "账户称呼",
+        "当前世界",
+        "因果点余额",
+        "累计入账",
+        "累计消费",
+        "账本版本",
+        "最后更新"
+      ]
+    ],
+    "orderNo": 0,
+    "sourceData": {
+      "note": "白·蝴蝶效应：本源账本只读投影 v1。余额与累计账目来自商店唯一持久账本。跨世界接续同一本源账户，禁止填表模型自行计算、增加、扣除或覆盖。\n此表由白·蝴蝶商店同步；AI只读，不得填表或改账。业务主键为记录ID，row_id由数据库维护。",
+      "initNode": "保持空表，等待商店同步。",
+      "insertNode": "禁止AI新增。仅接受商店从已提交本源账本同步的记录。",
+      "updateNode": "禁止AI修改。仅接受商店同步，不以剧情描述覆盖已确认权益。",
+      "deleteNode": "禁止AI删除。永久计功、报价和交易保留。",
+      "ddl": "CREATE TABLE shiro_overview ( -- 蝴蝶·因果总览\n  row_id INTEGER PRIMARY KEY, -- 行号\n  record_id TEXT NOT NULL UNIQUE, -- 记录ID\n  account_id TEXT, -- 本源账户\n  account_label TEXT, -- 账户称呼\n  current_world TEXT, -- 当前世界\n  balance TEXT, -- 因果点余额\n  income TEXT, -- 累计入账\n  spend TEXT, -- 累计消费\n  ledger_revision TEXT, -- 账本版本\n  updated_at TEXT -- 最后更新\n);"
+    },
+    "updateConfig": {
+      "uiSentinel": -1,
+      "contextDepth": -1,
+      "updateFrequency": 0,
+      "batchSize": -1,
+      "skipFloors": -1
+    },
+    "exportConfig": {
+      "enabled": false,
+      "splitByRow": false,
+      "entryName": "蝴蝶·因果总览",
+      "entryType": "constant",
+      "keywords": "",
+      "preventRecursion": true,
+      "injectionTemplate": "",
+      "extraIndexEnabled": false,
+      "extraIndexEntryName": "蝴蝶·因果总览·索引",
+      "extraIndexColumns": [],
+      "extraIndexColumnModes": {},
+      "extraIndexInjectionTemplate": "",
+      "entryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10000
+      },
+      "extraIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10010
+      },
+      "fixedEntryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99990
+      },
+      "fixedIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99991
+      },
+      "injectIntoWorldbook": false
+    }
+  },
+  "sheet_shiro_causality": {
+    "uid": "sheet_shiro_causality",
+    "name": "蝴蝶·因果与余波",
+    "content": [
+      [
+        "row_id",
+        "记录ID",
+        "本源账户",
+        "记录类别",
+        "所属世界",
+        "作用来源",
+        "新增结果",
+        "证据",
+        "本次入账",
+        "独立有效改变",
+        "计功参照ID",
+        "关联结果ID",
+        "已结算作用",
+        "后续追踪",
+        "记录状态",
+        "发生时间"
+      ]
+    ],
+    "orderNo": 1,
+    "sourceData": {
+      "note": "白·蝴蝶效应：本源账本只读投影 v1。实际已成立结果和未成立余波分开记录。余波只是追踪，不提前入账；深化仅新增部分，重复结果不重复计功。完整原始事件由商店账本保存。\n此表由白·蝴蝶商店同步；AI只读，不得填表或改账。业务主键为记录ID，row_id由数据库维护。",
+      "initNode": "保持空表，等待商店同步。",
+      "insertNode": "禁止AI新增。仅接受商店从已提交本源账本同步的记录。",
+      "updateNode": "禁止AI修改。仅接受商店同步，不以剧情描述覆盖已确认权益。",
+      "deleteNode": "禁止AI删除。永久计功、报价和交易保留。",
+      "ddl": "CREATE TABLE shiro_causality ( -- 蝴蝶·因果与余波\n  row_id INTEGER PRIMARY KEY, -- 行号\n  record_id TEXT NOT NULL UNIQUE, -- 记录ID\n  account_id TEXT, -- 本源账户\n  record_type TEXT, -- 记录类别\n  world TEXT, -- 所属世界\n  source TEXT, -- 作用来源\n  outcome TEXT, -- 新增结果\n  evidence TEXT, -- 证据\n  credited_amount TEXT, -- 本次入账\n  independent_change TEXT, -- 独立有效改变\n  standard_id TEXT, -- 计功参照ID\n  parent_result_id TEXT, -- 关联结果ID\n  settled TEXT, -- 已结算作用\n  tracking TEXT, -- 后续追踪\n  status TEXT, -- 记录状态\n  occurred_at TEXT -- 发生时间\n);"
+    },
+    "updateConfig": {
+      "uiSentinel": -1,
+      "contextDepth": -1,
+      "updateFrequency": 0,
+      "batchSize": -1,
+      "skipFloors": -1
+    },
+    "exportConfig": {
+      "enabled": false,
+      "splitByRow": false,
+      "entryName": "蝴蝶·因果与余波",
+      "entryType": "constant",
+      "keywords": "",
+      "preventRecursion": true,
+      "injectionTemplate": "",
+      "extraIndexEnabled": false,
+      "extraIndexEntryName": "蝴蝶·因果与余波·索引",
+      "extraIndexColumns": [],
+      "extraIndexColumnModes": {},
+      "extraIndexInjectionTemplate": "",
+      "entryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10001
+      },
+      "extraIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10011
+      },
+      "fixedEntryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99990
+      },
+      "fixedIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99991
+      },
+      "injectIntoWorldbook": false
+    }
+  },
+  "sheet_shiro_standards": {
+    "uid": "sheet_shiro_standards",
+    "name": "蝴蝶·恒量计功参照",
+    "content": [
+      [
+        "row_id",
+        "记录ID",
+        "本源账户",
+        "参照ID",
+        "规格键",
+        "固定影响规格",
+        "固定收益",
+        "确认时间"
+      ]
+    ],
+    "orderNo": 2,
+    "sourceData": {
+      "note": "白·蝴蝶效应：本源账本只读投影 v1。永久固定计功参照。相同实际因果影响沿用同一收益；不得随实力、世界或余额改写。1因果点的标准生命本源内涵恒定。\n此表由白·蝴蝶商店同步；AI只读，不得填表或改账。业务主键为记录ID，row_id由数据库维护。",
+      "initNode": "保持空表，等待商店同步。",
+      "insertNode": "禁止AI新增。仅接受商店从已提交本源账本同步的记录。",
+      "updateNode": "禁止AI修改。仅接受商店同步，不以剧情描述覆盖已确认权益。",
+      "deleteNode": "禁止AI删除。永久计功、报价和交易保留。",
+      "ddl": "CREATE TABLE shiro_standards ( -- 蝴蝶·恒量计功参照\n  row_id INTEGER PRIMARY KEY, -- 行号\n  record_id TEXT NOT NULL UNIQUE, -- 记录ID\n  account_id TEXT, -- 本源账户\n  standard_id TEXT, -- 参照ID\n  spec_key TEXT, -- 规格键\n  effect_standard TEXT, -- 固定影响规格\n  reward TEXT, -- 固定收益\n  confirmed_at TEXT -- 确认时间\n);"
+    },
+    "updateConfig": {
+      "uiSentinel": -1,
+      "contextDepth": -1,
+      "updateFrequency": 0,
+      "batchSize": -1,
+      "skipFloors": -1
+    },
+    "exportConfig": {
+      "enabled": false,
+      "splitByRow": false,
+      "entryName": "蝴蝶·恒量计功参照",
+      "entryType": "constant",
+      "keywords": "",
+      "preventRecursion": true,
+      "injectionTemplate": "",
+      "extraIndexEnabled": false,
+      "extraIndexEntryName": "蝴蝶·恒量计功参照·索引",
+      "extraIndexColumns": [],
+      "extraIndexColumnModes": {},
+      "extraIndexInjectionTemplate": "",
+      "entryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10002
+      },
+      "extraIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10012
+      },
+      "fixedEntryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99990
+      },
+      "fixedIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99991
+      },
+      "injectIntoWorldbook": false
+    }
+  },
+  "sheet_shiro_quotes": {
+    "uid": "sheet_shiro_quotes",
+    "name": "蝴蝶·永久商品报价",
+    "content": [
+      [
+        "row_id",
+        "记录ID",
+        "本源账户",
+        "报价ID",
+        "规格键",
+        "商品名称",
+        "奖励类别",
+        "来源世界",
+        "完整所得",
+        "实际强度",
+        "数量规格",
+        "作用范围",
+        "持续时间",
+        "使用次数",
+        "承接条件",
+        "跨界效力",
+        "固定价格",
+        "存续类别",
+        "别名",
+        "旧版报价ID",
+        "新增规格",
+        "确认时间"
+      ]
+    ],
+    "orderNo": 3,
+    "sourceData": {
+      "note": "白·蝴蝶效应：本源账本只读投影 v1。完整八项效果规格与固定报价绑定；同规格跨界同价。稀有奖励始终可看，报价不受余额、稀缺度、实力、剧情或购买次数影响。1点基准本源增益常驻。\n此表由白·蝴蝶商店同步；AI只读，不得填表或改账。业务主键为记录ID，row_id由数据库维护。",
+      "initNode": "保持空表，等待商店同步。",
+      "insertNode": "禁止AI新增。仅接受商店从已提交本源账本同步的记录。",
+      "updateNode": "禁止AI修改。仅接受商店同步，不以剧情描述覆盖已确认权益。",
+      "deleteNode": "禁止AI删除。永久计功、报价和交易保留。",
+      "ddl": "CREATE TABLE shiro_quotes ( -- 蝴蝶·永久商品报价\n  row_id INTEGER PRIMARY KEY, -- 行号\n  record_id TEXT NOT NULL UNIQUE, -- 记录ID\n  account_id TEXT, -- 本源账户\n  quote_id TEXT, -- 报价ID\n  spec_key TEXT, -- 规格键\n  product_name TEXT, -- 商品名称\n  category TEXT, -- 奖励类别\n  source_world TEXT, -- 来源世界\n  effect_content TEXT, -- 完整所得\n  effect_strength TEXT, -- 实际强度\n  effect_quantity TEXT, -- 数量规格\n  effect_range TEXT, -- 作用范围\n  effect_duration TEXT, -- 持续时间\n  effect_uses TEXT, -- 使用次数\n  effect_conditions TEXT, -- 承接条件\n  effect_cross_world TEXT, -- 跨界效力\n  price TEXT, -- 固定价格\n  persistence_kind TEXT, -- 存续类别\n  aliases TEXT, -- 别名\n  previous_quote_id TEXT, -- 旧版报价ID\n  spec_differences TEXT, -- 新增规格\n  confirmed_at TEXT -- 确认时间\n);"
+    },
+    "updateConfig": {
+      "uiSentinel": -1,
+      "contextDepth": -1,
+      "updateFrequency": 0,
+      "batchSize": -1,
+      "skipFloors": -1
+    },
+    "exportConfig": {
+      "enabled": false,
+      "splitByRow": false,
+      "entryName": "蝴蝶·永久商品报价",
+      "entryType": "constant",
+      "keywords": "",
+      "preventRecursion": true,
+      "injectionTemplate": "",
+      "extraIndexEnabled": false,
+      "extraIndexEntryName": "蝴蝶·永久商品报价·索引",
+      "extraIndexColumns": [],
+      "extraIndexColumnModes": {},
+      "extraIndexInjectionTemplate": "",
+      "entryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10003
+      },
+      "extraIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10013
+      },
+      "fixedEntryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99990
+      },
+      "fixedIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99991
+      },
+      "injectIntoWorldbook": false
+    }
+  },
+  "sheet_shiro_transactions": {
+    "uid": "sheet_shiro_transactions",
+    "name": "蝴蝶·交易回执",
+    "content": [
+      [
+        "row_id",
+        "记录ID",
+        "本源账户",
+        "交易ID",
+        "交易类别",
+        "所属世界",
+        "因果点金额",
+        "交易前余额",
+        "交易后余额",
+        "关联记录ID",
+        "物品数量",
+        "接收者",
+        "完整回执",
+        "发生时间"
+      ]
+    ],
+    "orderNo": 4,
+    "sourceData": {
+      "note": "白·蝴蝶效应：本源账本只读投影 v1。商店已提交交易的幂等回执投影。购买、使用、移交与入账分别记录；界面重开或重新同步不能产生新交易。禁止填表模型虚构消费或领取。\n此表由白·蝴蝶商店同步；AI只读，不得填表或改账。业务主键为记录ID，row_id由数据库维护。",
+      "initNode": "保持空表，等待商店同步。",
+      "insertNode": "禁止AI新增。仅接受商店从已提交本源账本同步的记录。",
+      "updateNode": "禁止AI修改。仅接受商店同步，不以剧情描述覆盖已确认权益。",
+      "deleteNode": "禁止AI删除。永久计功、报价和交易保留。",
+      "ddl": "CREATE TABLE shiro_transactions ( -- 蝴蝶·交易回执\n  row_id INTEGER PRIMARY KEY, -- 行号\n  record_id TEXT NOT NULL UNIQUE, -- 记录ID\n  account_id TEXT, -- 本源账户\n  transaction_id TEXT, -- 交易ID\n  transaction_kind TEXT, -- 交易类别\n  world TEXT, -- 所属世界\n  amount TEXT, -- 因果点金额\n  balance_before TEXT, -- 交易前余额\n  balance_after TEXT, -- 交易后余额\n  reference_id TEXT, -- 关联记录ID\n  item_quantity TEXT, -- 物品数量\n  recipient TEXT, -- 接收者\n  receipt TEXT, -- 完整回执\n  occurred_at TEXT -- 发生时间\n);"
+    },
+    "updateConfig": {
+      "uiSentinel": -1,
+      "contextDepth": -1,
+      "updateFrequency": 0,
+      "batchSize": -1,
+      "skipFloors": -1
+    },
+    "exportConfig": {
+      "enabled": false,
+      "splitByRow": false,
+      "entryName": "蝴蝶·交易回执",
+      "entryType": "constant",
+      "keywords": "",
+      "preventRecursion": true,
+      "injectionTemplate": "",
+      "extraIndexEnabled": false,
+      "extraIndexEntryName": "蝴蝶·交易回执·索引",
+      "extraIndexColumns": [],
+      "extraIndexColumnModes": {},
+      "extraIndexInjectionTemplate": "",
+      "entryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10004
+      },
+      "extraIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10014
+      },
+      "fixedEntryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99990
+      },
+      "fixedIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99991
+      },
+      "injectIntoWorldbook": false
+    }
+  },
+  "sheet_shiro_inventory": {
+    "uid": "sheet_shiro_inventory",
+    "name": "蝴蝶·长期所得",
+    "content": [
+      [
+        "row_id",
+        "记录ID",
+        "本源账户",
+        "所得ID",
+        "购买交易ID",
+        "报价ID",
+        "所得名称",
+        "存续类别",
+        "取得数量",
+        "剩余数量",
+        "已用数量",
+        "已移交数量",
+        "来源世界",
+        "完整所得",
+        "实际强度",
+        "数量规格",
+        "作用范围",
+        "持续时间",
+        "使用次数",
+        "承接条件",
+        "跨界效力",
+        "取得时间"
+      ]
+    ],
+    "orderNo": 5,
+    "sourceData": {
+      "note": "白·蝴蝶效应：本源账本只读投影 v1。长期能力保留，消耗品按实际使用扣减，移交按真实归属记录。保留人格、记忆与主观连续性，跨世界维持原规格效力。禁止独立增加或删除所得。\n此表由白·蝴蝶商店同步；AI只读，不得填表或改账。业务主键为记录ID，row_id由数据库维护。",
+      "initNode": "保持空表，等待商店同步。",
+      "insertNode": "禁止AI新增。仅接受商店从已提交本源账本同步的记录。",
+      "updateNode": "禁止AI修改。仅接受商店同步，不以剧情描述覆盖已确认权益。",
+      "deleteNode": "禁止AI删除。永久计功、报价和交易保留。",
+      "ddl": "CREATE TABLE shiro_inventory ( -- 蝴蝶·长期所得\n  row_id INTEGER PRIMARY KEY, -- 行号\n  record_id TEXT NOT NULL UNIQUE, -- 记录ID\n  account_id TEXT, -- 本源账户\n  inventory_id TEXT, -- 所得ID\n  purchase_id TEXT, -- 购买交易ID\n  quote_id TEXT, -- 报价ID\n  item_name TEXT, -- 所得名称\n  persistence_kind TEXT, -- 存续类别\n  acquired TEXT, -- 取得数量\n  remaining TEXT, -- 剩余数量\n  consumed TEXT, -- 已用数量\n  transferred TEXT, -- 已移交数量\n  source_world TEXT, -- 来源世界\n  effect_content TEXT, -- 完整所得\n  effect_strength TEXT, -- 实际强度\n  effect_quantity TEXT, -- 数量规格\n  effect_range TEXT, -- 作用范围\n  effect_duration TEXT, -- 持续时间\n  effect_uses TEXT, -- 使用次数\n  effect_conditions TEXT, -- 承接条件\n  effect_cross_world TEXT, -- 跨界效力\n  acquired_at TEXT -- 取得时间\n);"
+    },
+    "updateConfig": {
+      "uiSentinel": -1,
+      "contextDepth": -1,
+      "updateFrequency": 0,
+      "batchSize": -1,
+      "skipFloors": -1
+    },
+    "exportConfig": {
+      "enabled": false,
+      "splitByRow": false,
+      "entryName": "蝴蝶·长期所得",
+      "entryType": "constant",
+      "keywords": "",
+      "preventRecursion": true,
+      "injectionTemplate": "",
+      "extraIndexEnabled": false,
+      "extraIndexEntryName": "蝴蝶·长期所得·索引",
+      "extraIndexColumns": [],
+      "extraIndexColumnModes": {},
+      "extraIndexInjectionTemplate": "",
+      "entryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10005
+      },
+      "extraIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10015
+      },
+      "fixedEntryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99990
+      },
+      "fixedIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99991
+      },
+      "injectIntoWorldbook": false
+    }
+  }
+}

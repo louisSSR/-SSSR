@@ -1,0 +1,230 @@
+{
+  "version": "1.2.0",
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 30,
+      "sha256": "3a982215d56a390a7fa636f465e3d4f4ac56f338a43c89cc4c996a96446927b8"
+    },
+    {
+      "path": "assets/shiro-chibi.png",
+      "bytes": 1631671,
+      "sha256": "288a6ec2e74c08e298dc3a09a51cd1750be9ca12163a028cfc75d90419146023"
+    },
+    {
+      "path": "assets/shiro.png",
+      "bytes": 2525653,
+      "sha256": "225ab1ea922a761d2fd917b58a426d29fd0263179855ed42320ac0da8d831188"
+    },
+    {
+      "path": "build.cjs",
+      "bytes": 1665,
+      "sha256": "51efe93313a86975515f96548db0050d1b39d9b26d73214eca3b60946887fd1f"
+    },
+    {
+      "path": "capability-contract.json",
+      "bytes": 2483,
+      "sha256": "b9ecc8f61411bd5791acd359c5420d926a5320a3d43e22a4059b74e88d95c53f"
+    },
+    {
+      "path": "database/butterfly-memory-four-tables.json",
+      "bytes": 8754,
+      "sha256": "4ab22c26ca1caa83a98a453047c238a5d8085c758fe9f906518c261a491abde7"
+    },
+    {
+      "path": "database/butterfly-tables.json",
+      "bytes": 18695,
+      "sha256": "2c1dcff2ea1396fe569f617d97c2174367df7c995f506a302fd93cf36be958a4"
+    },
+    {
+      "path": "database/generate-memory-four-tables.mjs",
+      "bytes": 2463,
+      "sha256": "479b98ec8f398067e0a67025639289d5c3b8301aea4ce5ae71f182e30d6a788a"
+    },
+    {
+      "path": "database/shiro-v2-theme.json",
+      "bytes": 970,
+      "sha256": "635442d86156aae2c4ebfd0400e863c1f86fc0eec8144676e6272c03094688d6"
+    },
+    {
+      "path": "docs/acceptance.md",
+      "bytes": 3032,
+      "sha256": "f25dda399473e0d9e3022320cb764d726a557f04cd903ec027294efa46058a23"
+    },
+    {
+      "path": "docs/database-update-contract.md",
+      "bytes": 3848,
+      "sha256": "628d08bda7249886aad1ae847b0199d697c88ad442316c12d2e20ccea18d2c49"
+    },
+    {
+      "path": "docs/four-tables-install.md",
+      "bytes": 4218,
+      "sha256": "a85e14b7080cc0ce5a050f2f6c4d8e38e64a826321dfa09beff9189725de0c33"
+    },
+    {
+      "path": "docs/illustrations.md",
+      "bytes": 2223,
+      "sha256": "334fa8065c50d70b996c24ae936f0b20c20e822eaa6693aef7ee1375eb025272"
+    },
+    {
+      "path": "docs/ripple-history.md",
+      "bytes": 1410,
+      "sha256": "4070741cb04c138b33437c7aaeafa7b1d8c8272aee067a18028cd1d1a267c601"
+    },
+    {
+      "path": "docs/vue-license.txt",
+      "bytes": 1091,
+      "sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+    },
+    {
+      "path": "docs/蝴蝶效应原文.txt",
+      "bytes": 11179,
+      "sha256": "9c90265cc5dff0667bb9d18bc07023218ebdbf3b4ec85ab1cefb44bd69292a64"
+    },
+    {
+      "path": "extension-spec.json",
+      "bytes": 279,
+      "sha256": "1afc7ff3d87d82b433c1bc371ac5884e675a32500524489089827c02cfe35994"
+    },
+    {
+      "path": "index.js",
+      "bytes": 213013,
+      "sha256": "7409b3f7c6de0a6fc052f335cfd287e7a976e470b8770c137481ef644c5a4b29"
+    },
+    {
+      "path": "index.js.LICENSE.txt",
+      "bytes": 208,
+      "sha256": "47e55ad4eb26d02ea017e7ab6726af889a3ab34b99ae6b78e30c500b8a56b3fc"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 394,
+      "sha256": "1b7c614d1029d0780b6eebae143cad82fe114f34d9296ee093b77a16c1e69186"
+    },
+    {
+      "path": "package.json",
+      "bytes": 778,
+      "sha256": "8b1645fc8ef620ac401f258c7212737559c3314f6aa6390c3c001f490428e728"
+    },
+    {
+      "path": "README.md",
+      "bytes": 9750,
+      "sha256": "c205e4e13b8987f51f13f17c7e948d3d5f21c8875cd496b492975ad0309beea4"
+    },
+    {
+      "path": "src/App.vue",
+      "bytes": 31229,
+      "sha256": "e122b238424acb0b026697a65cdc70c951300c03e56561c1c4d3438c6af0170d"
+    },
+    {
+      "path": "src/appearance.ts",
+      "bytes": 1409,
+      "sha256": "e9fffb283137f3ba38fc69749ff7a38c3c864c970132a418bb47107a1350f8bd"
+    },
+    {
+      "path": "src/controller.ts",
+      "bytes": 21694,
+      "sha256": "9cd74f9640b18399ebc34511bee85e1e707814968bc5ad9d1b75bbbd398d02f0"
+    },
+    {
+      "path": "src/core.ts",
+      "bytes": 39133,
+      "sha256": "914824bb9a5bf1fbd60597c85e569008939cd1b7e1499a74d44a1374db15a57c"
+    },
+    {
+      "path": "src/database-visibility.ts",
+      "bytes": 2670,
+      "sha256": "9ae5d191276c51f2b6cf43b733673ce697d8c79380c0e9610bf0c51900be523b"
+    },
+    {
+      "path": "src/database.ts",
+      "bytes": 21882,
+      "sha256": "1ddb45b4b9eac6fd7c3c59d737941e5a81b5ca3ad3a2ee37993dc639a35f98f2"
+    },
+    {
+      "path": "src/env.d.ts",
+      "bytes": 237,
+      "sha256": "e39467a2d98818500694694b2a90d7d50ffa171d4d5821f7e8e0135f1fef4d81"
+    },
+    {
+      "path": "src/host.ts",
+      "bytes": 3094,
+      "sha256": "586b883801ca2e80f337a1c29ac03f5b1ea20ec0e136516f1dacdfdb07f40bc3"
+    },
+    {
+      "path": "src/index.ts",
+      "bytes": 9160,
+      "sha256": "25528f56e75278f6b37aa55d55a60d9ae4b96472ada2b0894bb3db7ff82a48b0"
+    },
+    {
+      "path": "src/journal.ts",
+      "bytes": 8260,
+      "sha256": "c24cbc40ad9e46bdd805550b69948535f40fbb49c7d485bf19efdaaa3bd30ecd"
+    },
+    {
+      "path": "src/mascot.css",
+      "bytes": 886,
+      "sha256": "ecd02bfd20d205712bd12477bfcf37bd149b7cea520c41ca4f9fe9cc8ad5ec4b"
+    },
+    {
+      "path": "src/memory-database.ts",
+      "bytes": 1941,
+      "sha256": "c47de9a0f4efc0c9b2498e9a314a0b47cd25f902b8814ac2711c5074dca8ac02"
+    },
+    {
+      "path": "src/memory.ts",
+      "bytes": 14073,
+      "sha256": "a8b94db131ccaa875775b13f9fc020f31b3ecdcefe5894a876cb8022e32a7c50"
+    },
+    {
+      "path": "src/prompt-budget.ts",
+      "bytes": 1203,
+      "sha256": "6bb4a7052a78261d0a263a88d308371ad08b7829694ed7a1ff6ef4af1b93542c"
+    },
+    {
+      "path": "src/protocol.ts",
+      "bytes": 11518,
+      "sha256": "57b2bd86ffad16d8597587e50e4d6a09d64516d77818704a17ed0c50fbec031d"
+    },
+    {
+      "path": "src/storage.ts",
+      "bytes": 9391,
+      "sha256": "b1adc196e5dfb04a8ac2ef9f665b92dca9f52b6f3e9cf1e978caa60efdc825a8"
+    },
+    {
+      "path": "src/style.css",
+      "bytes": 26575,
+      "sha256": "24d3fce3643e5fafd0dd0d9aa39d818592082c91bcb028a5a8096d153ad3a7a2"
+    },
+    {
+      "path": "tests/core.test.mjs",
+      "bytes": 20529,
+      "sha256": "37202fa2a255b045afe1d3b4d741f3d4a68f926b90801c7ac93f5ef66ec22113"
+    },
+    {
+      "path": "tests/database-visibility.test.mjs",
+      "bytes": 4648,
+      "sha256": "827f4d407fd0d954b11d653c2d51db07402a00f27a89dd1c1dda2497cd89916d"
+    },
+    {
+      "path": "tests/four-table-template.test.mjs",
+      "bytes": 3837,
+      "sha256": "40694dba2e97099964b9868763ab64ed6208118016de5eb1aeda6be58b834116"
+    },
+    {
+      "path": "tests/journal.test.mjs",
+      "bytes": 22417,
+      "sha256": "becbc83f91f6889252c97d883db0ccdb7b82ec7db106f25c433056b52ff4d583"
+    },
+    {
+      "path": "tests/memory.test.mjs",
+      "bytes": 11937,
+      "sha256": "be371c44d31417f675149febb9f4ea07d49c1665e942ef208dbda83328cdd005"
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 293,
+      "sha256": "e59910376523140450d9a4405949003574b498329d205b8f097e08e35f98ea0c"
+    }
+  ]
+}

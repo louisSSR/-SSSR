@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "minimum": {
+    "sillytavern": "1.18.0",
+    "tavernHelper": null
+  },
+  "requirements": [
+    {
+      "id": "host-context",
+      "owner": "sillytavern",
+      "symbol": "SillyTavern.getContext",
+      "required": true,
+      "fallback": null
+    },
+    {
+      "id": "persistent-ledger",
+      "owner": "provider",
+      "symbol": "indexedDB.open",
+      "required": true,
+      "fallback": null
+    },
+    {
+      "id": "host-events",
+      "owner": "sillytavern",
+      "symbol": "context.eventSource.on",
+      "required": true,
+      "fallback": null
+    },
+    {
+      "id": "host-event-cleanup",
+      "owner": "sillytavern",
+      "symbol": "context.eventSource.removeListener",
+      "required": true,
+      "fallback": null
+    },
+    {
+      "id": "host-request-auth",
+      "owner": "sillytavern",
+      "symbol": "context.getRequestHeaders",
+      "required": true,
+      "fallback": null
+    },
+    {
+      "id": "owned-prompt",
+      "owner": "sillytavern",
+      "symbol": "context.setExtensionPrompt",
+      "required": true,
+      "fallback": null
+    },
+    {
+      "id": "host-generation",
+      "owner": "sillytavern",
+      "symbol": "context.generateQuietPrompt",
+      "required": false,
+      "fallback": "选择已配置的数据库API预设，否则仅浏览已有商品与账本。"
+    },
+    {
+      "id": "database-projection",
+      "owner": "provider",
+      "symbol": "AutoCardUpdaterAPI.applyChatBoundProjection",
+      "required": false,
+      "fallback": "原版数据库使用原生六表导出导入；不回退到未绑定聊天的CRUD。"
+    },
+    {
+      "id": "database-generation",
+      "owner": "provider",
+      "symbol": "AutoCardUpdaterAPI.callAI",
+      "required": false,
+      "fallback": "使用酒馆当前API。"
+    },
+    {
+      "id": "own-appearance-settings",
+      "owner": "sillytavern",
+      "symbol": "context.extensionSettings",
+      "required": true,
+      "fallback": null
+    },
+    {
+      "id": "save-appearance-settings",
+      "owner": "sillytavern",
+      "symbol": "context.saveSettingsDebounced",
+      "required": true,
+      "fallback": null
+    },
+    {
+      "id": "host-tokenizer",
+      "owner": "sillytavern",
+      "symbol": "context.getTokenCountAsync",
+      "required": false,
+      "fallback": "UTF-8字节保守预算；仍超限则不发送评估请求。"
+    }
+  ]
+}

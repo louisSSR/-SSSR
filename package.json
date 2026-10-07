@@ -1,0 +1,25 @@
+{
+  "name": "shiro-butterfly-shop",
+  "version": "1.2.0",
+  "private": true,
+  "description": "白 · 蝴蝶效应：独立商店、任务与有预算的四类记忆",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "node build.cjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test tests/core.test.mjs tests/journal.test.mjs tests/memory.test.mjs tests/database-visibility.test.mjs tests/four-table-template.test.mjs",
+    "tables:check": "node database/generate-memory-four-tables.mjs --check"
+  },
+  "dependencies": {
+    "vue": "3.5.39"
+  },
+  "devDependencies": {
+    "webpack": "5.108.4",
+    "vue-loader": "17.4.2",
+    "ts-loader": "9.6.2",
+    "typescript": "6.0.3",
+    "jsdom": "29.1.1"
+  }
+}

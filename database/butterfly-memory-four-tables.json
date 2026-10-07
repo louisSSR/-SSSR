@@ -1,0 +1,277 @@
+{
+  "mate": {
+    "type": "chatSheets",
+    "version": 1,
+    "updateConfigUiSentinel": -1,
+    "globalInjectionConfig": {
+      "readableEntryPlacement": {
+        "position": "before_char",
+        "depth": 2,
+        "order": 99981
+      },
+      "wrapperPlacement": {
+        "position": "before_char",
+        "depth": 2,
+        "order": 99980
+      }
+    }
+  },
+  "sheet_shiro_memory_1": {
+    "uid": "sheet_shiro_memory_1",
+    "name": "蝴蝶·一、重要印象",
+    "content": [
+      [
+        "row_id",
+        "记录ID",
+        "本源账户",
+        "对象 / 世界",
+        "最新印象"
+      ]
+    ],
+    "orderNo": 0,
+    "sourceData": {
+      "note": "白·蝴蝶四表记忆快照。完整历史保存在商店本源账本。本表只读展示，不是余额真源。请勿另行打开世界书注入，以免与插件预算摘要重复。",
+      "initNode": "由商店导入快照。",
+      "insertNode": "禁止AI改账或编造事实。",
+      "updateNode": "重新导出快照刷新；不要自动填表。",
+      "deleteNode": "不删除本源历史。",
+      "ddl": "CREATE TABLE shiro_memory_1 (\n row_id INTEGER PRIMARY KEY, -- 行号\n c0 TEXT NOT NULL UNIQUE, -- 记录ID\n c1 TEXT, -- 本源账户\n c2 TEXT, -- 对象 / 世界\n c3 TEXT -- 最新印象\n);"
+    },
+    "updateConfig": {
+      "uiSentinel": -1,
+      "contextDepth": -1,
+      "updateFrequency": 0,
+      "batchSize": -1,
+      "skipFloors": -1
+    },
+    "exportConfig": {
+      "enabled": false,
+      "splitByRow": false,
+      "entryName": "蝴蝶·一、重要印象",
+      "entryType": "constant",
+      "keywords": "",
+      "preventRecursion": true,
+      "injectionTemplate": "",
+      "extraIndexEnabled": false,
+      "extraIndexEntryName": "蝴蝶·因果总览·索引",
+      "extraIndexColumns": [],
+      "extraIndexColumnModes": {},
+      "extraIndexInjectionTemplate": "",
+      "entryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10000
+      },
+      "extraIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10010
+      },
+      "fixedEntryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99990
+      },
+      "fixedIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99991
+      },
+      "injectIntoWorldbook": false
+    }
+  },
+  "sheet_shiro_memory_2": {
+    "uid": "sheet_shiro_memory_2",
+    "name": "蝴蝶·二、点数账目",
+    "content": [
+      [
+        "row_id",
+        "记录ID",
+        "本源账户",
+        "项目",
+        "明细",
+        "点数"
+      ]
+    ],
+    "orderNo": 1,
+    "sourceData": {
+      "note": "白·蝴蝶四表记忆快照。完整历史保存在商店本源账本。本表只读展示，不是余额真源。请勿另行打开世界书注入，以免与插件预算摘要重复。",
+      "initNode": "由商店导入快照。",
+      "insertNode": "禁止AI改账或编造事实。",
+      "updateNode": "重新导出快照刷新；不要自动填表。",
+      "deleteNode": "不删除本源历史。",
+      "ddl": "CREATE TABLE shiro_memory_2 (\n row_id INTEGER PRIMARY KEY, -- 行号\n c0 TEXT NOT NULL UNIQUE, -- 记录ID\n c1 TEXT, -- 本源账户\n c2 TEXT, -- 项目\n c3 TEXT, -- 明细\n c4 TEXT -- 点数\n);"
+    },
+    "updateConfig": {
+      "uiSentinel": -1,
+      "contextDepth": -1,
+      "updateFrequency": 0,
+      "batchSize": -1,
+      "skipFloors": -1
+    },
+    "exportConfig": {
+      "enabled": false,
+      "splitByRow": false,
+      "entryName": "蝴蝶·二、点数账目",
+      "entryType": "constant",
+      "keywords": "",
+      "preventRecursion": true,
+      "injectionTemplate": "",
+      "extraIndexEnabled": false,
+      "extraIndexEntryName": "蝴蝶·因果总览·索引",
+      "extraIndexColumns": [],
+      "extraIndexColumnModes": {},
+      "extraIndexInjectionTemplate": "",
+      "entryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10000
+      },
+      "extraIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10010
+      },
+      "fixedEntryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99990
+      },
+      "fixedIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99991
+      },
+      "injectIntoWorldbook": false
+    }
+  },
+  "sheet_shiro_memory_3": {
+    "uid": "sheet_shiro_memory_3",
+    "name": "蝴蝶·三、消费与所得",
+    "content": [
+      [
+        "row_id",
+        "记录ID",
+        "本源账户",
+        "所得",
+        "实际状态",
+        "已消费点数"
+      ]
+    ],
+    "orderNo": 2,
+    "sourceData": {
+      "note": "白·蝴蝶四表记忆快照。完整历史保存在商店本源账本。本表只读展示，不是余额真源。请勿另行打开世界书注入，以免与插件预算摘要重复。",
+      "initNode": "由商店导入快照。",
+      "insertNode": "禁止AI改账或编造事实。",
+      "updateNode": "重新导出快照刷新；不要自动填表。",
+      "deleteNode": "不删除本源历史。",
+      "ddl": "CREATE TABLE shiro_memory_3 (\n row_id INTEGER PRIMARY KEY, -- 行号\n c0 TEXT NOT NULL UNIQUE, -- 记录ID\n c1 TEXT, -- 本源账户\n c2 TEXT, -- 所得\n c3 TEXT, -- 实际状态\n c4 TEXT -- 已消费点数\n);"
+    },
+    "updateConfig": {
+      "uiSentinel": -1,
+      "contextDepth": -1,
+      "updateFrequency": 0,
+      "batchSize": -1,
+      "skipFloors": -1
+    },
+    "exportConfig": {
+      "enabled": false,
+      "splitByRow": false,
+      "entryName": "蝴蝶·三、消费与所得",
+      "entryType": "constant",
+      "keywords": "",
+      "preventRecursion": true,
+      "injectionTemplate": "",
+      "extraIndexEnabled": false,
+      "extraIndexEntryName": "蝴蝶·因果总览·索引",
+      "extraIndexColumns": [],
+      "extraIndexColumnModes": {},
+      "extraIndexInjectionTemplate": "",
+      "entryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10000
+      },
+      "extraIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10010
+      },
+      "fixedEntryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99990
+      },
+      "fixedIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99991
+      },
+      "injectIntoWorldbook": false
+    }
+  },
+  "sheet_shiro_memory_4": {
+    "uid": "sheet_shiro_memory_4",
+    "name": "蝴蝶·四、连锁反应与任务",
+    "content": [
+      [
+        "row_id",
+        "记录ID",
+        "本源账户",
+        "类型 / 标识",
+        "现况与下一步"
+      ]
+    ],
+    "orderNo": 3,
+    "sourceData": {
+      "note": "白·蝴蝶四表记忆快照。完整历史保存在商店本源账本。本表只读展示，不是余额真源。请勿另行打开世界书注入，以免与插件预算摘要重复。",
+      "initNode": "由商店导入快照。",
+      "insertNode": "禁止AI改账或编造事实。",
+      "updateNode": "重新导出快照刷新；不要自动填表。",
+      "deleteNode": "不删除本源历史。",
+      "ddl": "CREATE TABLE shiro_memory_4 (\n row_id INTEGER PRIMARY KEY, -- 行号\n c0 TEXT NOT NULL UNIQUE, -- 记录ID\n c1 TEXT, -- 本源账户\n c2 TEXT, -- 类型 / 标识\n c3 TEXT -- 现况与下一步\n);"
+    },
+    "updateConfig": {
+      "uiSentinel": -1,
+      "contextDepth": -1,
+      "updateFrequency": 0,
+      "batchSize": -1,
+      "skipFloors": -1
+    },
+    "exportConfig": {
+      "enabled": false,
+      "splitByRow": false,
+      "entryName": "蝴蝶·四、连锁反应与任务",
+      "entryType": "constant",
+      "keywords": "",
+      "preventRecursion": true,
+      "injectionTemplate": "",
+      "extraIndexEnabled": false,
+      "extraIndexEntryName": "蝴蝶·因果总览·索引",
+      "extraIndexColumns": [],
+      "extraIndexColumnModes": {},
+      "extraIndexInjectionTemplate": "",
+      "entryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10000
+      },
+      "extraIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 10010
+      },
+      "fixedEntryPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99990
+      },
+      "fixedIndexPlacement": {
+        "position": "at_depth_as_system",
+        "depth": 2,
+        "order": 99991
+      },
+      "injectIntoWorldbook": false
+    }
+  }
+}
