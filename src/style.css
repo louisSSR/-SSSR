@@ -2,6 +2,19 @@
 
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
+/* Direct guidance: each section explains its input, action, and saved result. */
+.start-heading{margin-bottom:20px}.start-heading p{margin-top:12px;max-width:650px;font-size:15px}
+.next-step{padding:22px;border:1px solid #cec0e7;border-radius:14px;background:linear-gradient(110deg,#f0eafb,#eef7fb)}
+.next-step h2{margin:12px 0 8px;font-size:22px}.next-step p{font-size:14px;color:#665778}.next-step button{margin-top:16px;min-height:44px}
+.session-facts{grid-template-columns:80px minmax(0,1fr);align-items:center;border-bottom:1px solid var(--line);padding:4px 0 18px;font-size:14px}
+.start-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.start-steps>button{display:flex;gap:12px;text-align:left;padding:20px;border:1px solid var(--line);border-radius:12px;background:white;align-items:flex-start;min-width:0}
+.start-steps>button:hover{background:#f8f5ff;border-color:#c4b1dc}.start-steps>button>div{min-width:0}.start-steps b{font-size:15px}.start-steps p{font-size:13px;margin:8px 0;line-height:1.7}.start-steps small{font-size:12px;color:#6f4c9b}
+.step-number{display:grid;place-items:center;width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:#eee6f8;color:#6c469c;font-weight:650}
+.field-caption{font-size:14px;font-weight:600;margin:14px 0 9px;color:#594568}.action-context{font-size:13px;margin:10px 0 18px;line-height:1.7}.action-context button{font-size:13px;margin-left:6px}
+.setup-cost,.setup-options{position:relative;z-index:1;max-width:65%}.setup-cost{color:#635175}.setup-options{display:flex;flex-wrap:wrap;gap:12px}.welcome .setup-options label{margin:0;font-size:13px;min-height:44px}
+.topbar .status{max-width:240px;line-height:1.4}.hero h1{font-size:27px;letter-spacing:0;line-height:1.45}.hero{min-height:240px}.hero-copy{max-width:65%}
+
 /* The owned top-layer host supplies a real viewport-sized containing block.
    The host app may transform <html>; do not anchor children to that ancestor. */
 :host::backdrop{background:transparent;pointer-events:none}
@@ -81,4 +94,25 @@
   .memory-table table,.memory-table tbody,.memory-table tr,.memory-table td{display:block;width:100%}.memory-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.memory-table tr+tr{border-top:1px solid var(--line)}.memory-table td{min-width:0;max-width:none;border:0;padding:9px 12px;font-size:14px}.memory-table td::before{content:attr(data-label);display:block;font-size:11px;font-weight:600;color:#79648e;margin-bottom:4px}.memory-table td:first-child{background:#f7f4fc}.memory-table td:last-child{padding-bottom:14px}
   .explanation{font-size:13px}.explanation summary{line-height:1.65;padding:10px 0}.note,.receipt{font-size:13px}.note{padding:12px}.subtle{font-size:13px!important}.page-footer{font-size:10px;gap:12px;flex-wrap:wrap}
   .launcher{bottom:calc(72px + env(safe-area-inset-bottom,0px));right:max(14px,env(safe-area-inset-right));max-width:calc(100% - 28px);padding:7px 13px;font-size:13px}.launcher small{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+
+/* Keep labels available on narrow tablets too; icons alone do not explain destinations. */
+@media(max-width:800px){
+  .body{flex-direction:column}.rail{width:100%;min-width:0;flex-shrink:0;border:0;border-bottom:1px solid var(--line);padding:4px 0}
+  .rail nav{display:flex;gap:4px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding:0 8px 4px}
+  .rail nav button{flex:0 0 auto;min-width:88px;min-height:44px;font-size:13px;flex-direction:row;gap:5px;padding:8px;white-space:nowrap}
+  .rail nav button>span{font-size:16px;width:auto}.rail nav button>b{display:none}
+  :host([data-compact-height]) .rail{width:100%;padding:2px 0;overflow:hidden}
+  :host([data-compact-height]) .rail nav button{font-size:12px;padding:6px 8px;min-height:44px}
+  :host([data-compact-height]) .rail nav button>span{font-size:14px}
+  .setup-cost,.setup-options{max-width:100%}.topbar .status{max-width:100px;font-size:11px}
+  .start-steps{grid-template-columns:minmax(0,1fr)}.start-steps>button{padding:16px}.next-step{padding:18px}
+  .start-heading h1{font-size:25px}.next-step h2{font-size:20px}.session-facts{font-size:14px;gap:8px 12px}
+}
+@media(max-width:520px){
+  .hero{min-height:170px;padding:18px}.hero h1{font-size:23px;line-height:1.4}.hero-copy{max-width:100%}.hero .shiro,.hero-chess{display:none}
+  .hero p{max-width:none;font-size:14px}.hero .eyebrow{display:none}.world-pill{margin-top:14px}
+  .topbar .brand small{display:none}.topbar .brand b{font-size:13px}.topbar{gap:4px}.status{max-width:86px!important}
+  .field-caption,.action-context{font-size:14px}.start-steps p{font-size:14px}.start-steps b{font-size:16px}
+  .welcome .setup-options{display:grid;gap:4px}.welcome .setup-cost{font-size:13px}
 }

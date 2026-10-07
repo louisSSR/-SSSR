@@ -4,7 +4,7 @@
   "dependencies": [],
   "js": "index.js",
   "author": "Local project · Codex assisted",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "auto_update": false,
   "hooks": {
     "activate": "onActivate",
@@ -13,5 +13,6 @@
     "delete": "onDelete",
     "clean": "onDisable"
   },
-  "minimum_client_version": "1.18.0"
+  "minimum_client_version": "1.18.0",
+  "homePage": "https://github.com/louisSSR/-SSSR"
 }
