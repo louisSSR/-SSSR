@@ -252,9 +252,9 @@
       "sha256": "c605380e4098da2569d3a2849c0be95101f765ea50e6a3f8c75397575f414b8f"
     },
     {
-      "path": "theme-script/assets/shiro-chibi.png",
-      "bytes": 1631671,
-      "sha256": "288a6ec2e74c08e298dc3a09a51cd1750be9ca12163a028cfc75d90419146023"
+      "path": "theme-script/assets/shiro-puppet-sheet.png",
+      "bytes": 1986717,
+      "sha256": "c7fa57669435e2b7f19da51125e20a345a6f284a95213d231601ac5316f077a5"
     },
     {
       "path": "theme-script/build.cjs",
@@ -264,42 +264,52 @@
     {
       "path": "theme-script/dist/component-update-manifest.json",
       "bytes": 387,
-      "sha256": "1b94d9a7edcfe079365882ea16430a7d4ef12ba155171a6c9e50759a166a01f5"
+      "sha256": "52ab2fb3dec0212b8e60c677552c169c0538ee6c20aa441ba0f6dcc27697be7b"
     },
     {
       "path": "theme-script/dist/shiro-database-theme.script.json",
-      "bytes": 2211711,
-      "sha256": "70621faeeffa4c59933667c0ec9bb71860494802d3901b8d562b657271df107c"
+      "bytes": 2697302,
+      "sha256": "d232b8554d69cfed29d7bca32e1e94fa36229c7730af8d3962ea88a799f5f99b"
+    },
+    {
+      "path": "theme-script/docs/puppet-art.md",
+      "bytes": 5034,
+      "sha256": "e8a4ea75159cb1ba17389133684ca9e383782443677771505791aa2ce2845774"
     },
     {
       "path": "theme-script/docs/runtime-contract.md",
-      "bytes": 2607,
-      "sha256": "38765204bb19ba686b71ac296a2de133057fefd14aef43fe594ccb131d6c035e"
+      "bytes": 3916,
+      "sha256": "ce0370eb89161496da20c74ac92f1b713e085152a9fa7892a9e60c5c66beb41c"
+    },
+    {
+      "path": "theme-script/docs/validation-1.1.0.md",
+      "bytes": 4078,
+      "sha256": "0832d05255b4fbcca36bc6ffab992ccab917311444412d72c902e011aa9d4bf7"
     },
     {
       "path": "theme-script/package.json",
       "bytes": 419,
-      "sha256": "61d47f8a7fb49814b512b01729069d3ef32799cd89dac7ef207929560a81f983"
+      "sha256": "2aa0025bae61f7076dfaf87c5ba2cdff28e3a730e89fd83acd36af01b3e33d3c"
     },
     {
       "path": "theme-script/README.md",
-      "bytes": 3200,
-      "sha256": "62490eac87e21aa2c3cb76a6167debd05da466251bf47af1c6d2b44a0a196a99"
+      "bytes": 4397,
+      "sha256": "8ca6b70b4143d4a55474ad91b34d5d6201ede8a009720a5767d37ee2b50193f5"
     },
     {
       "path": "theme-script/script-spec.json",
-      "bytes": 1215,
-      "sha256": "f9c6b352d5144b3b2d384e0c14f419928adf574561d13104e3cc4e3c5aa72ffa"
+      "bytes": 1346,
+      "sha256": "1d44d72389294847a58ec3c97fbc80b598237ae53805ac3d7d2ee164f5fac600"
     },
     {
       "path": "theme-script/src/database-theme.css",
-      "bytes": 22333,
-      "sha256": "dbd022318253dd73ba62af9dbc861fe4ad624aac91943c523ddf4657e8cbfd93"
+      "bytes": 27764,
+      "sha256": "b6c5aac216b41b0deaa0d11c0c4c894e051306e9a2e3301f0e1d7ed401fc964d"
     },
     {
       "path": "theme-script/src/database-theme.ts",
-      "bytes": 17233,
-      "sha256": "9367bce9bfd5d25c3439bcb3a7603779e17cd2f18e5b05ac571de7eff04ea4e3"
+      "bytes": 20332,
+      "sha256": "54d2ca7f2fda433c3e91aea5d7ec8f40da493e4c8dc30152f1ea6d563c7e0672"
     },
     {
       "path": "theme-script/src/env.d.ts",
@@ -308,23 +318,33 @@
     },
     {
       "path": "theme-script/src/index.ts",
-      "bytes": 745,
-      "sha256": "f63fab05673c02e1b7a69f80f58b9ca34a5226c7d2da7b653628311485511b90"
+      "bytes": 752,
+      "sha256": "2e4b7f5863cdc71625272e6b02a62671c7114bc83bfa5b8ddc6db03b18ee00fd"
+    },
+    {
+      "path": "theme-script/src/puppet.ts",
+      "bytes": 10309,
+      "sha256": "37d6b8558406bf9c058cc61120beb07ad1b051f3da5b49bf08cc70656d41fcee"
     },
     {
       "path": "theme-script/src/runtime.ts",
       "bytes": 5415,
-      "sha256": "f92a51d7fdf1cc4a2c3fd4d902f445822ac903a71a025aec93b18a25a29bb297"
+      "sha256": "c586e2a6d845f9610a3dab17f2b06919ecf5f9109297c41898d840c88b5b9743"
     },
     {
       "path": "theme-script/tests/database-theme.test.mjs",
-      "bytes": 18722,
-      "sha256": "3a9bebf902ff27ed59d04198d673cf54236a1fa907fbf4548a0d412edc9a8b55"
+      "bytes": 24785,
+      "sha256": "b809935640c8085d36fd9fafad4da3d49c3ebb271914ab492b06356de918483f"
+    },
+    {
+      "path": "theme-script/tests/puppet.test.mjs",
+      "bytes": 8075,
+      "sha256": "475d2a363e05a92180b2fedc4b34ad4123b4e74d8f6c7698bc26659a1b37cc1b"
     },
     {
       "path": "theme-script/tests/script-runtime.test.mjs",
-      "bytes": 10982,
-      "sha256": "57602087dd385e244b1d0dfb028aadcaf4a90fbd7ace0a76580371bca59a39ab"
+      "bytes": 11145,
+      "sha256": "6c3ebe773e9e5f21ce38319a1a003b996c282fc08ebab25e998957a1b6ae006a"
     },
     {
       "path": "theme-script/tsconfig.json",
@@ -336,5 +356,6 @@
       "bytes": 293,
       "sha256": "e59910376523140450d9a4405949003574b498329d205b8f097e08e35f98ea0c"
     }
-  ]
+  ],
+  "themeScriptVersion": "1.1.0"
 }

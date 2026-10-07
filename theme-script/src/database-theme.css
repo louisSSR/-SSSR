@@ -64,7 +64,6 @@
   flex: 0 0 auto;
   width: 68px;
   height: 68px;
-  object-fit: contain;
   filter: drop-shadow(0 3px 4px #7773aa25);
 }
 .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-avatar[hidden] { display: none; }
@@ -134,7 +133,7 @@
   background: radial-gradient(ellipse at 50% 30%, #ffffff, #f2efffd9 75%);
   box-shadow: 0 5px 18px #7b7cb511;
   text-align: center;
-  pointer-events: none;
+  pointer-events: auto;
   overflow: hidden;
 }
 .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-portrait::before {
@@ -325,6 +324,7 @@
   .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .acu-v2-app__header { padding: 4px 8px; }
   .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-portrait {
     flex-direction: row;
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 12px;
     padding: 4px 8px 10px;
@@ -375,7 +375,9 @@
   .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-masthead .shiro-db-avatar { width: 32px; height: 32px; }
   .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-masthead .shiro-db-name { font-size: 16px; }
   .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-masthead :is(.shiro-db-eyebrow, .shiro-db-caption, .shiro-db-pieces) { display: none; }
-  .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-portrait { display: none; }
+  .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-portrait { flex-direction: row; flex-wrap: wrap; gap: 6px; padding: 4px 6px 8px; margin-bottom: 8px; text-align: left; }
+  .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-portrait .shiro-db-avatar { width: 44px; height: 44px; }
+  .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-portrait :is(.shiro-db-caption, .shiro-db-eyebrow, .shiro-db-pieces) { display: none; }
   .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-shortcuts { margin: 0 0 8px; }
   .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .acu-v2-app__theme-menu {
     max-height: calc(var(--shiro-db-viewport-height, 100dvh) - 76px - var(--acu-safe-top, 0px) - var(--acu-safe-bottom, 0px));
@@ -387,14 +389,57 @@
   .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] :is(.shiro-db-masthead, .shiro-db-portrait, .shiro-db-avatar) { animation: none; transition: none; }
 }
 
-/* Sole exception to app scoping: the source-confirmed DeskPetLayer Teleport, marked only while v2 is compatible.
-   CSS replacement leaves Vue's current src/pose, native pointer handlers and notification actions intact. */
-.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__body > .acu-desk-pet__flip > img.acu-desk-pet__img,
-.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek > img.acu-desk-pet__peek-img {
-  /* The self-contained PNG exceeds Chromium's custom-property value limit. */
-  content: url("__SHIRO_DATABASE_COMPANION_IMAGE__");
-  object-fit: contain;
-  filter: drop-shadow(0 3px 6px #8175b440);
+/* Independent square-frame sprite, never the full contact sheet scaled into an img. */
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-puppet,
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] .shiro-db-puppet {
+  display: block;
+  background-size: 300% 200%;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  box-sizing: border-box;
+  transition: transform .14s ease-out;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-puppet[data-shiro-puppet-pose="idle"],
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] .shiro-db-puppet[data-shiro-puppet-pose="idle"] { animation: shiro-db-puppet-blink 11s steps(1, end) infinite; }
+@keyframes shiro-db-puppet-blink {
+  0%, 97%, 100% { background-position: 0% 0%; }
+  /* Registration corrects the new blink's 6px leftward artwork offset;
+     the preceding cell has 8px fully transparent margin, so no neighbour is visible. */
+  98%, 99% { background-position: 49.4% 0%; }
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-puppet[data-shiro-puppet-pose="smug"],
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] .shiro-db-puppet[data-shiro-puppet-pose="smug"] { transform: rotate(-2deg); }
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] .shiro-db-puppet[data-shiro-puppet-pose="poke"] { transform: rotate(-7deg); }
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] .shiro-db-puppet[data-shiro-puppet-pose="carried"] { transform: translateY(-3px) rotate(7deg); }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-puppet-avatar-button {
+  appearance: none; background: transparent; border: 0; border-radius: 12px; padding: 0; min-width: 44px; min-height: 44px; flex: 0 0 auto; cursor: pointer;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-puppet-controls {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; width: 100%; min-width: 0; margin-top: 6px;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-puppet-controls > button {
+  appearance: none; min-height: 44px; min-width: 0; padding: 6px 4px; border: 1px solid #c3cbed; border-radius: 8px; background: #f8f7ff; color: #524779; font: 600 12px/1.4 system-ui, sans-serif; overflow-wrap: anywhere; cursor: pointer;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] :is(.shiro-db-puppet-avatar-button, .shiro-db-puppet-controls > button):focus-visible { outline: 2px solid #6552ad; outline-offset: 2px; }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] :is(.shiro-db-puppet-avatar-button, .shiro-db-puppet-controls > button):disabled { opacity: .6; cursor: default; }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-puppet-line {
+  width: 100%; min-width: 0; box-sizing: border-box; margin: 7px 0 0; padding: 7px 8px; border-radius: 8px; background: #eeebfa; color: #494364; font: 12px/1.5 system-ui, sans-serif; overflow-wrap: anywhere; animation: shiro-db-puppet-line-fade 4s linear both;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-puppet-line[hidden] { display: none; }
+@keyframes shiro-db-puppet-line-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] [data-shiro-puppet-quiet="true"] .shiro-db-puppet,
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] .shiro-db-puppet[data-shiro-puppet-quiet="true"] { animation: none; transition: none; transform: none; }
+/* Native img sources and gestures stay untouched. An owned span covers one square frame;
+   opacity keeps the latest native pose and its original geometry available for restoration. */
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__body > .acu-desk-pet__flip:has(> .shiro-db-puppet-body),
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek:has(> .shiro-db-puppet-peek) { position: relative; }
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__body > .acu-desk-pet__flip:has(> .shiro-db-puppet-body) > img.acu-desk-pet__img,
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek:has(> .shiro-db-puppet-peek) > img.acu-desk-pet__peek-img { opacity: 0; }
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] :is(.shiro-db-puppet-body, .shiro-db-puppet-peek) { position: absolute; width: 100%; height: 100%; filter: drop-shadow(0 3px 6px #8175b440); }
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] .shiro-db-puppet-body { inset: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] :is(.shiro-db-puppet[data-shiro-puppet-pose], .shiro-db-puppet-line),
+  .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] :is(.shiro-db-puppet[data-shiro-puppet-pose], .acu-desk-pet__body, .acu-desk-pet__peek, .acu-desk-pet__img) { animation: none; transition: none; }
 }
 .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-notice-bubble {
   --bubble-bg: #f4f5ff;
@@ -414,6 +459,18 @@
   /* Routine carousel messages can be opened from the native sidebar. Keep errors,
      warnings and action-bearing notices above the database with their real buttons. */
   .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"][data-shiro-database-notices="quiet"] > .acu-notice-bubble:not(.acu-notice-bubble--warning):not(.acu-notice-bubble--error):not(:has(.acu-notice-bubble__action)) { z-index: 8990; visibility: hidden; }
+  /* Native warning tone can mask real warning text as a generic status phrase.
+     Keep all warnings/errors/actions and dock the actual node in reserved space.
+     Only its native inline pet-following translation needs an explicit override. */
+  .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"][data-shiro-database-notice-dock="blank-chess-v1"] > .acu-notice-bubble {
+    transform: none !important;
+    inset: var(--shiro-db-notice-top) auto auto var(--shiro-db-notice-left);
+    width: var(--shiro-db-notice-width);
+    min-width: 0;
+    max-width: var(--shiro-db-notice-width);
+    max-height: var(--shiro-db-notice-max-height);
+    overflow: auto;
+  }
   .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-notice-bubble .acu-notice-bubble__close {
     width: 44px;
     height: 44px;

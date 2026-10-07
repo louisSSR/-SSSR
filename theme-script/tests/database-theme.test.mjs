@@ -9,11 +9,14 @@ let JSDOM;
 try { ({ JSDOM } = require('jsdom')); }
 catch { ({ JSDOM } = createRequire(new URL('../../../artifacts/shiro-butterfly-shop-20261006/patched-shujuku/package.json', import.meta.url))('jsdom')); }
 const css = readFileSync(new URL('../src/database-theme.css', import.meta.url), 'utf8');
+const puppetOutput = ts.transpileModule(readFileSync(new URL('../src/puppet.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+const puppetModule = { exports: {} };
+new Function('require', 'module', 'exports', puppetOutput)(require, puppetModule, puppetModule.exports);
 const output = ts.transpileModule(readFileSync(new URL('../src/database-theme.ts', import.meta.url), 'utf8'), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
 }).outputText;
 const module = { exports: {} };
-new Function('require', 'module', 'exports', output)(name => name === './database-theme.css' ? { __esModule: true, default: css } : require(name), module, module.exports);
+new Function('require', 'module', 'exports', output)(name => name === './database-theme.css' ? { __esModule: true, default: css } : name === './puppet' ? puppetModule.exports : require(name), module, module.exports);
 const { databaseThemeAsset, mountDatabaseTheme } = module.exports;
 const marker = '[data-shiro-database-theme]';
 const native = `<div class="acu-v2-app"><div class="acu-v2-app__shell"><div class="acu-v2-app__body"><nav class="acu-v2-sidebar"><div class="acu-v2-sidebar__brand"><button class="acu-v2-sidebar__brand-title">奶数据库</button></div><button class="acu-v2-sidebar__item">工作台</button></nav><div class="acu-v2-app__content"><header class="acu-v2-app__header"><div class="acu-v2-app__header-left"><h1>填表工作台</h1></div><div class="acu-v2-app__header-right"><button>关闭新 UI</button></div></header><main class="acu-v2-main"><textarea>原始数据</textarea></main></div></div></div></div>`;
@@ -29,7 +32,7 @@ function fixture(html = native) {
 }
 
 test('asset resolver is local and treats the configured base as a directory', () => {
-  assert.equal(databaseThemeAsset('/extensions/shiro/assets', 'https://example.test/'), 'https://example.test/extensions/shiro/assets/shiro-chibi.png');
+  assert.equal(databaseThemeAsset('/extensions/shiro/assets', 'https://example.test/'), 'https://example.test/extensions/shiro/assets/shiro-puppet-sheet.png');
   for (const base of ['https://tracker.test/a', 'data:text/plain,bad', 'javascript:void(0)', 'https://user:pass@example.test/a', '/a?secret=1', '/a#fragment']) {
     assert.throws(() => databaseThemeAsset(base, 'https://example.test/'));
   }
@@ -140,23 +143,31 @@ test('optional native shortcut buttons navigate live views and vanish fully when
   mounted.dispose(); f.dom.window.close();
 });
 
-test('every CSS rule is scoped, excludes host geometry and has no automatic motion', () => {
-  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  for (const match of stripped.matchAll(/([^{}]+)\{/g)) {
-    const selector = match[1].trim();
-    if (selector.startsWith('@media')) continue;
-    assert.ok(selector.startsWith('.acu-v2-app[data-shiro-database-theme="blank-chess-v1"]') || selector.startsWith('.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"]') || selector.startsWith('#acu-app-v2:has(> .acu-v2-app[data-shiro-database-theme="blank-chess-v1"]) > .acu-dialog-layer'), selector);
-  }
-  assert.doesNotMatch(css, /position:\s*fixed|@keyframes/);
+test('every CSS rule is scoped; only named puppet motion is added and respects reduced motion', () => {
   const stylesheet = require('postcss').parse(css);
+  stylesheet.walkRules(rule => {
+    if (rule.parent.type === 'atrule' && rule.parent.name === 'keyframes') { assert.match(rule.parent.params, /^shiro-db-puppet-(blink|line-fade)$/); return; }
+    const selector = rule.selector;
+    assert.ok(selector.startsWith('.acu-v2-app[data-shiro-database-theme="blank-chess-v1"]') || selector.startsWith('.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"]') || selector.startsWith('#acu-app-v2:has(> .acu-v2-app[data-shiro-database-theme="blank-chess-v1"]) > .acu-dialog-layer'), selector);
+  });
+  assert.doesNotMatch(css, /position:\s*fixed/);
+  assert.match(css, /background-size:\s*300% 200%/);
   const desktopMenuBreakpoints = new Map([
     ['.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .acu-v2-app__header-left > .acu-v2-app__menu', '(min-width: 721px)'],
     ['.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .acu-visualizer-surface__topbar-context > .acu-visualizer-surface__mobile-menu', '(min-width: 768px)'],
   ]);
   let desktopMenuExceptions = 0;
+  let noticeDockExceptions = 0;
   stylesheet.walkDecls(declaration => {
     if (!declaration.important) return;
     const rule = declaration.parent, media = rule.parent;
+    if (rule.selector === '.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"][data-shiro-database-notice-dock="blank-chess-v1"] > .acu-notice-bubble') {
+      assert.equal(declaration.prop, 'transform'); assert.equal(declaration.value, 'none');
+      assert.equal(media.type, 'atrule'); assert.equal(media.name, 'media');
+      assert.equal(media.params, '(max-width: 767px), (pointer: coarse) and (max-width: 1024px)');
+      noticeDockExceptions++;
+      return;
+    }
     assert.ok(desktopMenuBreakpoints.has(rule.selector));
     assert.equal(declaration.prop, 'display');
     assert.equal(declaration.value, 'none');
@@ -168,6 +179,7 @@ test('every CSS rule is scoped, excludes host geometry and has no automatic moti
     desktopMenuExceptions++;
   });
   assert.equal(desktopMenuExceptions, 2, 'only the two inactive native desktop menus may override component display');
+  assert.equal(noticeDockExceptions, 1, 'only a mobile owned notice dock may override native inline translation');
   // The native mobile pet is z9410 over the full-screen shell z9000. This exact
   // lower layer prevents it intercepting save/menu taps without changing gestures
   // or geometry. Other host overlays and stacking contexts stay forbidden.
@@ -226,6 +238,61 @@ test('routine notifications can be reopened from native navigation and regain no
   assert.equal(layer.querySelector('.acu-notice-bubble__body').textContent, '原生提示'); f.dom.window.close();
 });
 
+test('mobile warnings keep real nodes and actions in reserved viewport space, even with a generic carousel sentence', async () => {
+  const f = fixture(); f.mount.dispose();
+  Object.defineProperty(f.dom.window, 'innerWidth', { value: 320, configurable: true });
+  const viewport = new f.dom.window.EventTarget();
+  Object.assign(viewport, { width: 320, height: 844, offsetTop: 0, offsetLeft: 0, scale: 1 });
+  Object.defineProperty(f.dom.window, 'visualViewport', { value: viewport, configurable: true });
+  const layer = f.doc.createElement('div'); layer.className = 'acu-desk-pet-layer';
+  layer.innerHTML = '<div class="acu-notice-bubble acu-notice-bubble--warning" style="transform:translate3d(8px,197px,0px)"><div class="acu-notice-bubble__body"><p class="acu-notice-bubble__text">正在抄小本本…</p></div><button class="acu-notice-bubble__close">下一条</button></div>';
+  f.doc.body.append(layer);
+  const bubble = layer.firstElementChild, body = bubble.querySelector('.acu-notice-bubble__text'), close = bubble.querySelector('button');
+  const originalTransform = bubble.style.transform;
+  let nativeHeight = 64, closeClicks = 0, actionClicks = 0;
+  bubble.getBoundingClientRect = () => ({ height: nativeHeight });
+  close.addEventListener('click', () => closeClicks++);
+  const mount = mountDatabaseTheme(f.options), layout = () => f.doc.querySelector('[data-shiro-database-layout]').textContent;
+  assert.equal(layer.getAttribute('data-shiro-database-notice-dock'), 'blank-chess-v1');
+  assert.match(layout(), /viewport-height:764px/); assert.match(layout(), /viewport-top:80px/);
+  assert.match(layout(), /notice-top:8px/); assert.match(layout(), /notice-width:304px/);
+  assert.equal(body.textContent, '正在抄小本本…'); assert.equal(bubble.style.transform, originalTransform);
+  assert.equal(bubble.hasAttribute('data-shiro-database-routine'), false, 'words never classify a real warning as disposable');
+  close.click(); assert.equal(closeClicks, 1);
+  body.textContent = '真实警告，不是已知轮播文案'; await flush();
+  assert.equal(layer.getAttribute('data-shiro-database-notice-dock'), 'blank-chess-v1');
+  const action = f.doc.createElement('button'); action.className = 'acu-notice-bubble__action'; action.textContent = '打开真实任务';
+  action.addEventListener('click', () => actionClicks++); bubble.append(action);
+  bubble.className = 'acu-notice-bubble acu-notice-bubble--error'; nativeHeight = 200; await flush();
+  assert.match(layout(), /viewport-height:668px/); assert.match(layout(), /viewport-top:176px/);
+  action.click(); assert.equal(actionClicks, 1); assert.equal(bubble.querySelector('.acu-notice-bubble__text'), body);
+  bubble.className = 'acu-notice-bubble acu-notice-bubble--info'; action.remove(); nativeHeight = 64; await flush();
+  assert.equal(layer.hasAttribute('data-shiro-database-notice-dock'), false, 'ordinary info stays on the existing quiet path');
+  assert.match(layout(), /viewport-height:844px/); assert.match(layout(), /viewport-top:0px/);
+  f.doc.querySelector('.shiro-db-notices').click();
+  assert.equal(layer.getAttribute('data-shiro-database-notice-dock'), 'blank-chess-v1', 'explicitly opened info also gets real space');
+  viewport.height = 390; viewport.dispatchEvent(new f.dom.window.Event('resize'));
+  assert.match(layout(), /viewport-height:310px/); assert.match(layout(), /masthead-display:none/);
+  const shell = f.doc.querySelector('.acu-v2-app__shell'); shell.style.display = 'none'; await flush();
+  assert.equal(layer.hasAttribute('data-shiro-database-notice-dock'), false, 'chat resumes the native pet-following bubble');
+  assert.match(layout(), /viewport-height:390px/); assert.equal(bubble.style.transform, originalTransform);
+  shell.style.display = 'flex'; await flush();
+  assert.equal(layer.getAttribute('data-shiro-database-notice-dock'), 'blank-chess-v1');
+  viewport.scale = 2; viewport.dispatchEvent(new f.dom.window.Event('resize'));
+  assert.equal(layer.hasAttribute('data-shiro-database-notice-dock'), false, 'pinch zoom remains native');
+  viewport.scale = 1; viewport.dispatchEvent(new f.dom.window.Event('resize'));
+  assert.equal(layer.getAttribute('data-shiro-database-notice-dock'), 'blank-chess-v1');
+  bubble.className = 'acu-notice-bubble acu-notice-bubble--warning'; await flush();
+  const newer = mountDatabaseTheme(f.options); mount.dispose();
+  assert.equal(layer.getAttribute('data-shiro-database-notice-dock'), 'blank-chess-v1');
+  newer.setEnabled(false); assert.equal(layer.hasAttribute('data-shiro-database-notice-dock'), false);
+  assert.equal(bubble.style.transform, originalTransform); close.click(); assert.equal(closeClicks, 2);
+  newer.dispose(); viewport.dispatchEvent(new f.dom.window.Event('resize'));
+  assert.equal(f.doc.querySelector('[data-shiro-database-layout]'), null);
+  assert.equal(layer.hasAttribute('data-shiro-database-notice-dock'), false);
+  f.dom.window.close();
+});
+
 test('exact teleported companion keeps native image sources, gestures and useful notice actions; off restores latest pose', async () => {
   const f = fixture();
   f.mount.setEnabled(false);
@@ -239,7 +306,7 @@ test('exact teleported companion keeps native image sources, gestures and useful
   f.mount.setEnabled(true);
   assert.equal(layer.getAttribute('data-shiro-database-companion'), 'blank-chess-v1');
   assert.equal(layer.querySelector('img').getAttribute('src'), 'data:image/png;base64,original');
-  assert.match(f.doc.querySelector('[data-shiro-database-style]').textContent, /http:\/\/localhost:8000\/scripts\/extensions\/third-party\/shiro\/assets\/shiro-chibi.png/);
+  assert.match(layer.querySelector('.shiro-db-puppet-body').style.backgroundImage, /http:\/\/localhost:8000\/scripts\/extensions\/third-party\/shiro\/assets\/shiro-puppet-sheet.png/);
   layer.querySelector('.acu-desk-pet').dispatchEvent(new f.dom.window.Event('pointerdown'));
   layer.querySelector('button').click();
   assert.equal(gestures, 1); assert.equal(actions, 1);

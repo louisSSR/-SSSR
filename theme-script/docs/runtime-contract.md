@@ -6,8 +6,10 @@
 - 按钮依据：`@types/iframe/script.d.ts` 的 `getButtonEvent(name)`；`@types/iframe/event.d.ts` 的 `eventOn(event,listener)`、`eventRemoveListener(event,listener)`。4.8.18 的返回 stop 在包装监听器路径可能不命中原映射，所以清理同时使用原监听器显式撤销，不调用全局清事件函数。
 - 启动：jQuery ready；排队前注册 pagehide 取消标记，脚本在 ready 前停用不能复活。启动后由运行实例拥有并清理 pagehide、父页面事件、renderer 与桥。
 - 状态：只在当前实例内存中保存 enabled/status/error，不写任何持久变量或宿主设置。停用或重载不留下外观开关状态。
-- 主题 renderer 继承已验收的数据库完整主题与手机 CSS；增加仅用于组件交付的 `embeddedPng` 分支。仅接受 8 MiB 以内、带 PNG 签名的 Base64 PNG URL；原同来源目录分支保持不变。
-- 图片：复用此前 image_gen 生成的 Q 版白同人 PNG，不是官方素材。构建时将原始 PNG 完整内嵌，运行时不发图片网络请求。
+- 主题 renderer 保留数据库完整主题与手机布局；`embeddedPng` 仅接受 8 MiB 以内、带 PNG 签名的 Base64 PNG URL。同来源目录分支指向独立 `shiro-puppet-sheet.png`。
+- 图片：1.1.0 使用单独生成的数据库木偶白同人素材，参考用户确认的 BanG Dream 元祖迷你动画的平涂迷你动画方向，不是官方素材；不再复用商店 PNG。完整原图是 1536×1024 RGBA、3 列 2 行，每格 512 方形；顺序 idle／blink／smug／poke／carried／peek。原始 PNG 完整内嵌，运行时不发图片网络请求；每个自有 span 直接设置完整 URL 的 background-image，并使用 300% 200% 的背景尺寸选择单格，避免大 CSS 变量失效与整张 sheet 缩进头像。
+- 木偶互动：`puppet.ts` 只维护 transient UI 状态。侧栏头像与按钮触发五句本地台词轮换，3 秒冷却，4 秒淡出，默认无周期台词。安静开关停止玩笑与眨眼，不写宿主设置。原生 pet body／peek 添加自有 overlay span，原 img src 与姿态始终保留；peek 只读镜像原 img 的方形展示几何，在原父层裁剪。pointer 监听只旁听，不 preventDefault、不抢 capture；tap、超过 6px 的拖动及取消分别反应。缩边使用 peek 表情；旋转／失焦取消旧手势。所有 span、监听与超时在原 renderer clear／dispose 路径清理，重复实例不会遗留互动。
+- 玩笑不调用模型、不读取行数据、不写聊天／数据库／变量。台词由 textContent 显示，不使用原生通知管理器；真实警告与操作通知内容不替换，也不根据点击保存宣称保存成功。减少动态效果时停止装饰运动。
 
 父页面所有权键为 `Symbol.for('shiro-database-theme:helper-script-owner')`，重复启用脚本先清理旧脚本实例；旧 iframe 随后关闭不能删除新实例。兼容商店的外观桥仍为 `shiro-database-theme:appearance-v1`，增加 `provider:'helper-script'` 标记。商店服务与两个事件名沿用 1.2.0 契约。
 

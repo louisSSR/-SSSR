@@ -1,8 +1,9 @@
 import themeCss from './database-theme.css';
+import { createPuppetPresentation, type PuppetCompanion } from './puppet';
 
 /** Public DOM decoration only. This module never reads database stores or changes data. */
 export interface DatabaseThemeOptions {
-  /** Directory containing shiro-chibi.png, normally new URL('./assets/', import.meta.url).href. */
+  /** Directory containing the independent shiro-puppet-sheet.png. */
   assetBase: string;
   /** Optional self-contained PNG for the helper-script delivery; never arbitrary data: HTML/SVG. */
   embeddedPng?: string;
@@ -28,6 +29,7 @@ const ROOT = '.acu-v2-app';
 const COMPANION = '.acu-desk-pet-layer';
 const COMPANION_MARKER = 'data-shiro-database-companion';
 const NOTICE_MARKER = 'data-shiro-database-notices';
+const NOTICE_DOCK_MARKER = 'data-shiro-database-notice-dock';
 type OwnedDocument = Document & { [OWNER]?: DatabaseThemeMount };
 type Decoration = { root: Element; nodes: Set<HTMLElement> };
 
@@ -41,7 +43,7 @@ export function databaseThemeAsset(base: string, documentUrl: string): string {
     throw new Error('白主题图片目录必须位于当前酒馆来源');
   }
   if (!directory.pathname.endsWith('/')) directory.pathname += '/';
-  return new URL('shiro-chibi.png', directory).href;
+  return new URL('shiro-puppet-sheet.png', directory).href;
 }
 
 export function databaseThemeEmbeddedPng(value: string): string {
@@ -84,30 +86,58 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
   try { imageUrl = options.embeddedPng === undefined ? databaseThemeAsset(options.assetBase, doc.baseURI) : databaseThemeEmbeddedPng(options.embeddedPng); }
   catch (error) { assetError = error instanceof Error ? error.message : '图片目录无效'; }
   const decorated = new Map<Element, Decoration>();
-  const companions = new Set<Element>();
+  const companions = new Map<Element, PuppetCompanion>();
+  const brandDisposers = new Map<HTMLElement, () => void>();
+  const puppet = createPuppetPresentation(doc, imageUrl);
   const style = doc.createElement('style');
   style.dataset.shiroDatabaseStyle = VERSION;
-  style.textContent = themeCss.replace('"__SHIRO_DATABASE_COMPANION_IMAGE__"', JSON.stringify(imageUrl));
+  style.textContent = themeCss;
   const layoutStyle = doc.createElement('style');
   layoutStyle.dataset.shiroDatabaseLayout = VERSION;
   let noticesOpen = false;
+  let dockedNoticeLayer: Element | null = null;
   const viewport = win.visualViewport;
 
+  function clearNoticeDock(): void {
+    if (dockedNoticeLayer?.getAttribute(NOTICE_DOCK_MARKER) === VERSION) dockedNoticeLayer.removeAttribute(NOTICE_DOCK_MARKER);
+    dockedNoticeLayer = null;
+  }
   function updateViewport(): void {
-    if (disposed || !enabled || !decorated.size) { layoutStyle.remove(); return; }
+    if (disposed || !enabled || !decorated.size) { clearNoticeDock(); layoutStyle.remove(); return; }
     const narrow = win.innerWidth <= 767 || (win.innerWidth <= 1024 && win.matchMedia?.('(pointer: coarse)').matches);
     // Do not counteract browser pinch zoom. The visual viewport differs from dvh when
     // a software keyboard pans/shrinks a page without resizing its layout viewport.
-    if (!narrow || !viewport || Math.abs(viewport.scale - 1) > .01) { layoutStyle.remove(); return; }
+    if (!narrow || !viewport || Math.abs(viewport.scale - 1) > .01) { clearNoticeDock(); layoutStyle.remove(); return; }
     const values = [viewport.width, viewport.height, viewport.offsetTop, viewport.offsetLeft];
-    if (values.some(value => !Number.isFinite(value)) || viewport.width <= 0 || viewport.height <= 0) { layoutStyle.remove(); return; }
+    if (values.some(value => !Number.isFinite(value)) || viewport.width <= 0 || viewport.height <= 0) { clearNoticeDock(); layoutStyle.remove(); return; }
     const [width, height, viewportTop, viewportLeft] = values.map(value => Math.round(value * 100) / 100);
     // ST's html transform/perspective can own fixed descendants. In that case
     // window scrolling shifts the whole native shell; compensate inside our scope.
     const htmlStyle = win.getComputedStyle(doc.documentElement);
     const documentFixed = (htmlStyle.transform && htmlStyle.transform !== 'none') || (htmlStyle.perspective && htmlStyle.perspective !== 'none');
     const top = viewportTop + (documentFixed ? win.scrollY : 0), left = viewportLeft + (documentFixed ? win.scrollX : 0);
-    const next = `.acu-v2-app[${MARKER}="${VERSION}"],#acu-app-v2:has(> .acu-v2-app[${MARKER}="${VERSION}"]){--shiro-db-viewport-width:${width}px;--shiro-db-viewport-height:${height}px;--shiro-db-viewport-top:${top}px;--shiro-db-viewport-left:${left}px;--shiro-db-masthead-display:${height < 460 ? 'none' : 'flex'};}`;
+    const open = [...decorated.keys()].some(root => {
+      const shell = root.querySelector(':scope > .acu-v2-app__shell');
+      return shell && win.getComputedStyle(shell).display !== 'none';
+    });
+    // Warning tone may contain a generic carousel sentence for a real warning.
+    // Preserve it instead of inferring origin from words; reserve actual space.
+    const notices = open ? [...companions.keys()].flatMap(layer => [...layer.querySelectorAll(':scope > .acu-notice-bubble')].filter(bubble =>
+      win.getComputedStyle(bubble).display !== 'none' &&
+      (layer.getAttribute(NOTICE_MARKER) !== 'quiet' || bubble.matches('.acu-notice-bubble--warning, .acu-notice-bubble--error') || bubble.querySelector('.acu-notice-bubble__action')))) : [];
+    // Dock only one visible notice; multiple visible notices keep native geometry.
+    // The base mobile viewport layout remains independent of this single-notice dock.
+    const notice = notices.length === 1 ? notices[0] : null;
+    const layer = notice?.parentElement;
+    const canDock = layer && (!layer.hasAttribute(NOTICE_DOCK_MARKER) || layer.getAttribute(NOTICE_DOCK_MARKER) === VERSION);
+    const measured = canDock ? notice!.getBoundingClientRect().height : 0;
+    const noticeMaxHeight = Math.max(44, Math.min(160, height * .25));
+    const reserve = measured > 0 && Number.isFinite(measured) ? Math.min(Math.ceil(measured), noticeMaxHeight) + 16 : 0;
+    if (dockedNoticeLayer !== layer || !reserve) clearNoticeDock();
+    if (reserve) { layer!.setAttribute(NOTICE_DOCK_MARKER, VERSION); dockedNoticeLayer = layer!; }
+    const available = Math.max(1, height - reserve);
+    let next = `.acu-v2-app[${MARKER}="${VERSION}"],#acu-app-v2:has(> .acu-v2-app[${MARKER}="${VERSION}"]){--shiro-db-viewport-width:${width}px;--shiro-db-viewport-height:${available}px;--shiro-db-viewport-top:${top + reserve}px;--shiro-db-viewport-left:${left}px;--shiro-db-masthead-display:${available < 460 ? 'none' : 'flex'};}`;
+    if (reserve) next += `.acu-desk-pet-layer[${COMPANION_MARKER}="${VERSION}"][${NOTICE_DOCK_MARKER}="${VERSION}"]{--shiro-db-notice-top:${top + 8}px;--shiro-db-notice-left:${left + 8}px;--shiro-db-notice-width:${Math.max(1, width - 16)}px;--shiro-db-notice-max-height:${noticeMaxHeight}px;}`;
     if (layoutStyle.textContent !== next) layoutStyle.textContent = next;
     if (!layoutStyle.isConnected) (doc.head ?? doc.documentElement).append(layoutStyle);
   }
@@ -128,22 +158,20 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
     const node = doc.createElement('div');
     node.className = `shiro-db-${kind}`;
     node.dataset.shiroDatabaseDecoration = kind;
-    const img = doc.createElement('img');
-    img.src = imageUrl;
-    img.alt = '';
-    img.setAttribute('aria-hidden', 'true');
-    img.draggable = false;
-    img.decoding = 'async';
-    img.className = 'shiro-db-avatar';
-    // Keep text branding legible even if an asset was not copied with the extension.
-    img.addEventListener('error', () => { img.hidden = true; }, { once: true });
+    const sprite = puppet.sprite('shiro-db-avatar');
+    let avatar: HTMLElement = sprite;
+    if (kind === 'portrait') {
+      const button = doc.createElement('button'); button.type = 'button'; button.className = 'shiro-db-puppet-avatar-button';
+      button.setAttribute('aria-label', '和木偶白开个玩笑'); button.append(sprite); avatar = button;
+    }
     const copy = text('div', 'shiro-db-copy', '');
     copy.append(text('span', 'shiro-db-eyebrow', '「　」 BLANK'),
       text('strong', 'shiro-db-name', kind === 'masthead' ? '白 · 空白棋局' : '白 · SHIRO'),
-      text('span', 'shiro-db-caption', kind === 'masthead' ? '每一页记忆，都是下一步的起点。' : '蝴蝶落子，记忆成局。'));
+      text('span', 'shiro-db-caption', kind === 'masthead' ? '木偶白，正在看守这盘记忆。' : '小小木偶，也会认真吐槽。'));
     const pieces = text('span', 'shiro-db-pieces', '♔  ♟');
     pieces.setAttribute('aria-hidden', 'true');
-    node.append(img, copy, pieces);
+    node.append(avatar, copy, pieces);
+    if (kind === 'portrait') brandDisposers.set(node, puppet.portrait(node, sprite, avatar as HTMLButtonElement));
     return node;
   }
   function makeShortcuts(): HTMLElement {
@@ -179,11 +207,13 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
     return button;
   }
   function clear(record: Decoration): void {
-    for (const node of record.nodes) node.remove();
+    for (const node of record.nodes) { brandDisposers.get(node)?.(); brandDisposers.delete(node); node.remove(); }
     if (record.root.getAttribute(MARKER) === VERSION) record.root.removeAttribute(MARKER);
     decorated.delete(record.root);
   }
   function clearCompanion(layer: Element): void {
+    if (dockedNoticeLayer === layer) clearNoticeDock();
+    companions.get(layer)?.dispose();
     if (layer.getAttribute(COMPANION_MARKER) === VERSION) layer.removeAttribute(COMPANION_MARKER);
     layer.removeAttribute(NOTICE_MARKER);
     companions.delete(layer);
@@ -196,7 +226,7 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
       const noticeBody = layer.querySelector(':scope > .acu-notice-bubble > .acu-notice-bubble__body');
       return bodyImage || peekImage || noticeBody;
     }) : [];
-    for (const layer of [...companions]) if (!candidates.includes(layer)) clearCompanion(layer);
+    for (const layer of [...companions.keys()]) if (!candidates.includes(layer)) clearCompanion(layer);
     for (const layer of candidates) {
       if (layer.hasAttribute(COMPANION_MARKER) && layer.getAttribute(COMPANION_MARKER) !== VERSION) continue;
       layer.setAttribute(COMPANION_MARKER, VERSION);
@@ -206,7 +236,8 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
       });
       if (open && !noticesOpen) layer.setAttribute(NOTICE_MARKER, 'quiet');
       else layer.removeAttribute(NOTICE_MARKER);
-      companions.add(layer);
+      if (!companions.has(layer)) companions.set(layer, puppet.companion(layer));
+      else companions.get(layer)!.sync();
     }
     for (const record of decorated.values()) for (const node of record.nodes) {
       if (node.dataset.shiroDatabaseDecoration !== 'notices') continue;
@@ -235,7 +266,7 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
       const matches = new Map(roots.map(root => [root, inspectDatabaseThemeRoot(root)]));
       if (!enabled || assetError) {
         for (const record of [...decorated.values()]) clear(record);
-        for (const layer of [...companions]) clearCompanion(layer);
+        for (const layer of [...companions.keys()]) clearCompanion(layer);
         style.remove();
         layoutStyle.remove();
         report(!enabled ? '白主题已关闭，使用数据库原生外观' : `白主题暂停：${assetError}`);
@@ -252,7 +283,7 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
         if (!record) { record = { root, nodes: new Set() }; decorated.set(root, record); root.setAttribute(MARKER, VERSION); }
         const parents = new Set([...structure.headers.map(node => node.parentElement), ...structure.sidebars]);
         for (const node of [...record.nodes]) {
-          if (!node.isConnected || !parents.has(node.parentElement) || (!navigate && node.dataset.shiroDatabaseDecoration === 'shortcuts')) { node.remove(); record.nodes.delete(node); }
+          if (!node.isConnected || !parents.has(node.parentElement) || (!navigate && node.dataset.shiroDatabaseDecoration === 'shortcuts')) { brandDisposers.get(node)?.(); brandDisposers.delete(node); node.remove(); record.nodes.delete(node); }
         }
         for (const header of structure.headers) own(record, header, 'masthead');
         for (const sidebar of structure.sidebars) {
@@ -276,8 +307,9 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
     const relevant = records.some(record => {
       const target = record.target as Element;
       // Only upstream v-show ownership matters; pet dragging/input styles must not trigger layout scans.
-      if (record.type === 'attributes' && record.attributeName === 'style') return target.matches(`${ROOT}, ${ROOT} > .acu-v2-app__shell`);
-      if ([...decorated.keys(), ...companions].some(root => root === target || root.contains(target))) return true;
+      if (record.type === 'attributes' && record.attributeName === 'style') return target.matches(`${ROOT}, ${ROOT} > .acu-v2-app__shell, ${COMPANION} > .acu-desk-pet > .acu-desk-pet__peek > img.acu-desk-pet__peek-img`) ||
+        (target.matches(`${COMPANION} > .acu-notice-bubble`) && target.parentElement?.getAttribute(COMPANION_MARKER) === VERSION);
+      if ([...decorated.keys(), ...companions.keys()].some(root => root === target || root.contains(target))) return true;
       const surface = `${ROOT}, ${COMPANION}`;
       if (target.nodeType === 1 && (target.matches?.(surface) || target.closest?.(surface))) return true;
       if (record.type !== 'childList') return false;
@@ -302,7 +334,8 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
       win.removeEventListener('resize', updateViewport);
       win.removeEventListener('scroll', updateViewport);
       for (const record of [...decorated.values()]) clear(record);
-      for (const layer of [...companions]) clearCompanion(layer);
+      for (const layer of [...companions.keys()]) clearCompanion(layer);
+      puppet.dispose();
       style.remove();
       layoutStyle.remove();
       if (doc[OWNER] === api) delete doc[OWNER];

@@ -1,4 +1,4 @@
-import image from '../assets/shiro-chibi.png';
+import image from '../assets/shiro-puppet-sheet.png';
 import { startThemeScript } from './runtime';
 
 // Tavern Helper imports this into its unsandboxed script iframe after providing these helpers.

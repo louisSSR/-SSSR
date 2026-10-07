@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url), ts = require('typescript');
 let JSDOM;
 try { ({ JSDOM } = require('jsdom')); }
 catch { ({ JSDOM } = createRequire(new URL('../../../artifacts/shiro-butterfly-shop-20261006/patched-shujuku/package.json', import.meta.url))('jsdom')); }
-const png = 'data:image/png;base64,' + readFileSync(new URL('../assets/shiro-chibi.png', import.meta.url)).toString('base64');
+const png = 'data:image/png;base64,' + readFileSync(new URL('../assets/shiro-puppet-sheet.png', import.meta.url)).toString('base64');
 const native = '<div class="acu-v2-app"><div class="acu-v2-app__shell"><div class="acu-v2-app__body"><nav class="acu-v2-sidebar"></nav><div class="acu-v2-app__content"><header class="acu-v2-app__header"><div class="acu-v2-app__header-left"></div><div class="acu-v2-app__header-right"><button id="save">保存</button></div></header></div></div></div></div>';
 const ownerKey = Symbol.for('shiro-database-theme:helper-script-owner'), themeKey = Symbol.for('shiro-database-theme:appearance-v1'), shopKey = Symbol.for('shiro-butterfly-shop:ui-v1');
 function compile(file, imports = {}, extra = {}) {
@@ -17,7 +17,8 @@ function compile(file, imports = {}, extra = {}) {
   new Function('require', 'module', 'exports', ...Object.keys(extra), output)(name => imports[name] ?? require(name), mod, mod.exports, ...Object.values(extra));
   return mod.exports;
 }
-const renderer = compile('database-theme', { './database-theme.css': { __esModule: true, default: readFileSync(new URL('../src/database-theme.css', import.meta.url), 'utf8') } });
+const puppet = compile('puppet');
+const renderer = compile('database-theme', { './puppet': puppet, './database-theme.css': { __esModule: true, default: readFileSync(new URL('../src/database-theme.css', import.meta.url), 'utf8') } });
 const { startThemeScript } = compile('runtime', { './database-theme': renderer });
 function fixture() {
   const dom = new JSDOM(`<!doctype html><html><head></head><body><div id="extensions_settings2"></div>${native}</body></html>`, { url: 'http://localhost:18006/' });
@@ -37,7 +38,8 @@ test('script decorates only the parent realm, embeds the exact PNG, and pagehide
   const s = f.script();
   assert.equal(f.doc.querySelectorAll('[data-shiro-database-theme]').length, 1);
   assert.equal(s.frame.document.querySelectorAll('[data-shiro-database-theme],style').length, 0);
-  assert.equal(f.doc.querySelector('.shiro-db-avatar').src, png);
+  assert.equal(f.doc.querySelector('.shiro-db-avatar').style.backgroundImage, `url("${png}")`);
+  assert.equal(f.doc.querySelector('.shiro-db-avatar').tagName, 'SPAN');
   assert.ok(f.host[themeKey]); assert.equal(s.frame[themeKey], undefined);
   save.click(); assert.equal(clicks, 1);
   s.frame.dispatchEvent(new s.frame.Event('pagehide'));
@@ -95,20 +97,20 @@ test('a later old extension may take over: script clears only itself and never c
 test('embedded image accepts only bounded PNG data, while the unchanged URL path remains same-origin', () => {
   assert.equal(renderer.databaseThemeEmbeddedPng(png), png);
   for (const invalid of ['data:image/svg+xml;base64,aGVsbG8=', 'https://example.test/a.png', 'data:image/png;base64,PHNjcmlwdD4=', png + '\n', png + 'a'.repeat(8 * 1024 * 1024)]) assert.throws(() => renderer.databaseThemeEmbeddedPng(invalid));
-  assert.equal(renderer.databaseThemeAsset('/assets/', 'http://localhost/'), 'http://localhost/assets/shiro-chibi.png');
+  assert.equal(renderer.databaseThemeAsset('/assets/', 'http://localhost/'), 'http://localhost/assets/shiro-puppet-sheet.png');
 });
 
-test('large embedded companion PNG is a direct CSS content URL and cleanup preserves native image sources', () => {
+test('actual embedded companion sheet is a direct background URL, square frame CSS, and cleanup preserves native sources', () => {
   const f = fixture();
   const layer = f.doc.createElement('div'); layer.className = 'acu-desk-pet-layer';
   layer.innerHTML = '<div class="acu-desk-pet"><div class="acu-desk-pet__body"><div class="acu-desk-pet__flip"><img class="acu-desk-pet__img" src="/native-pose.png"></div></div><div class="acu-desk-pet__peek"><img class="acu-desk-pet__peek-img" src="/native-peek.png"></div></div>';
   f.doc.body.append(layer);
   const before = layer.outerHTML, s = f.script();
-  assert.ok(png.length > 1024 * 1024, 'fixture exercises the actual oversized embedded image');
   const style = f.doc.querySelector('[data-shiro-database-style]');
   assert.doesNotMatch(style.textContent, /--shiro-db-companion-image/);
-  const replacement = [...style.sheet.cssRules].find(rule => rule.selectorText?.includes('img.acu-desk-pet__img'));
-  assert.equal(replacement.style.getPropertyValue('content'), `url("${png}")`);
+  assert.equal(layer.querySelector('.shiro-db-puppet-body').style.backgroundImage, `url("${png}")`);
+  assert.equal(layer.querySelector('.shiro-db-puppet-peek').dataset.shiroPuppetPose, 'peek');
+  assert.match(style.textContent, /background-size:\s*300% 200%/);
   assert.equal(layer.querySelector('.acu-desk-pet__img').getAttribute('src'), '/native-pose.png');
   assert.equal(layer.querySelector('.acu-desk-pet__peek-img').getAttribute('src'), '/native-peek.png');
   s.owner.dispose();
@@ -120,7 +122,7 @@ test('pending jQuery ready does not resurrect a script stopped before initializa
   const f = fixture(), iframe = f.doc.createElement('iframe'); f.doc.body.append(iframe); const frame = iframe.contentWindow;
   let ready, started = 0, listenerFactory;
   const removes = [], stops = [];
-  const imports = { '../assets/shiro-chibi.png': { default: png }, './runtime': { startThemeScript: (_frame, _png, listen) => { started++; listenerFactory = listen; } } };
+  const imports = { '../assets/shiro-puppet-sheet.png': { default: png }, './runtime': { startThemeScript: (_frame, _png, listen) => { started++; listenerFactory = listen; } } };
   const extra = { window: frame, $: fn => { ready = fn; }, getButtonEvent: name => name, eventOn: () => ({ stop: () => stops.push(true) }), eventRemoveListener: (name, handler) => removes.push([name, handler]) };
   compile('index', imports, extra); frame.dispatchEvent(new frame.Event('pagehide')); ready(); assert.equal(started, 0);
   compile('index', imports, extra); ready(); assert.equal(started, 1);
