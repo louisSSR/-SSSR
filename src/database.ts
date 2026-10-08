@@ -16,6 +16,7 @@ export interface ChatSheets {
 }
 export interface AutoCardUpdaterApi {
   exportTableAsJson(): unknown;
+  refreshDataAndWorldbook?(): Promise<boolean>;
   getTableTemplate?(options?: { scope: 'chat' | 'global' }): unknown;
   importTemplateFromData?(data: ChatSheets, options: { scope: 'chat'; presetName: string; dataMode: 'seed'; conflictPolicy: 'reject' }): Promise<{ success: boolean; runtimeReady?: boolean; message?: string; error?: string }>;
   getChatBoundProjectionContext?(): { protocol: string; patchVersion: string; chatIdentity: string; ready: boolean };

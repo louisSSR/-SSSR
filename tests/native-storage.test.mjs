@@ -69,10 +69,54 @@ function richLedger() {
 test('v2 schema preserves every Ledger field, TEXT precision, unused quote/upgrade/aliases, optional arrays and transaction sequence', () => {
   const l = richLedger(), exported = n.createNativeFourTableExport(l, scope()), result = n.readNativeSnapshot(clone(exported), scope()); assert.deepEqual(result.ledger, l);
   assert.deepEqual(result.ledger.transactions.map(tx => tx.id), ['earn:large', 'buy:3', 'use:1', 'transfer:1', 'earn:deepening']);
-  assert.deepEqual(result.rows.sheet_shiro_memory_2.filter(row => row.record_kind === 'transaction').map(row => row.record_order), ['0', '1', '2', '3', '4']);
+  assert.deepEqual(result.rows.sheet_shiro_memory_2.filter(row => row.record_kind === 'transaction').map(row => row.record_order), ['0', '1', '2', '3', '4'].map(n.encodeNativeText), 'snapshot retains stored bytes for CAS, while its ledger is decoded');
   for (const sheet of Object.values(exported).filter(value => value.content)) { const rows = sheet.content.slice(1).reverse(); rows.forEach((row, i) => { row[0] = String(300 + i); }); sheet.content = [sheet.content[0], ...rows]; }
   assert.deepEqual(n.readNativeSnapshot(exported, scope()).ledger, l, 'row_id/order in exported native arrays is not business order');
   const empty = { ...c.createLedger('empty-flags', 'test', at(0)), impressions: [], quests: [], rippleHistory: [] }; assert.deepEqual(n.readNativeSnapshot(n.createNativeFourTableExport(empty, scope()), scope()).ledger, empty);
+});
+test('TEXT codec preserves numeric precision, leading zeros and literal reserved prefixes; malformed encodings fail closed', () => {
+  const escaped = ['0', '-0', '00042', '-00042.0007', '123456789012345678901234567890123456789012345678.123456789012345678', '@text:', '@text:"0007"', '@text:原文\n"😀'];
+  for (const value of escaped) { const encoded = n.encodeNativeText(value); assert.equal(encoded, '@text:' + JSON.stringify(value)); assert.equal(n.decodeNativeText(encoded), value); }
+  for (const value of ['', 'true', 'false', '普通文本😀', '1e7', '.7', '+7', '0.7kg']) { assert.equal(n.encodeNativeText(value), value); assert.equal(n.decodeNativeText(value), value); }
+  assert.equal(n.decodeNativeText('00042'), '00042', 'safe unencoded old v2 text remains readable');
+  for (const value of ['@text:', '@text:123', '@text:null', '@text:{}', '@text:[]', '@text:"0"junk', '@text:"safe"', '@text: "0007"', '@text:"\\u0030"']) assert.throws(() => n.decodeNativeText(value), code('BROKEN_NATIVE_STORAGE'));
+});
+test('encoded export reconstructs exact numeric and reserved-prefix business text without changing raw CAS rows', () => {
+  let ledger = c.createLedger('00001', '00042', at(0)); ledger = c.setWorld(ledger, '0007', at(1)).ledger;
+  ledger = c.credit(ledger, { ...creditInput('exact-credit', '123456789012345678901234567890123456789012345678.123456789012345678', at(2)), world: '0007', source: '00123', outcome: '00456', evidence: '00789', standardSpec: '001234567' }).ledger;
+  ledger = j.appendImpression(ledger, { id: '0008', world: '0007', subject: '0006', summary: '@text:"0007"', evidence: '@text:原文\n"😀', source: 'user', pinned: true, at: at(3) }).ledger;
+  const spec = Object.fromEntries(c.EFFECT_FIELDS.map((field, index) => [field, index === 0 ? '@text:literal' : `000${index}`]));
+  ledger = c.registerQuote(ledger, { id: '0009', name: '00010', category: '00011', world: '0007', spec, price: '0.123456789012345678', kind: 'consumable', at: at(4) }).ledger;
+  const exported = n.createNativeFourTableExport(ledger, scope()), original = clone(exported), snapshot = n.readNativeSnapshot(exported, scope());
+  assert.deepEqual(snapshot.ledger, ledger); assert.deepEqual(exported, original, 'decode must not mutate the export used for persistence comparison');
+  const account = snapshot.rows.sheet_shiro_memory_2.find(row => row.record_kind === 'account'); assert.equal(account.account_label, '@text:"00042"'); assert.equal(account.account_id, '@text:"00001"');
+  const impression = snapshot.rows.sheet_shiro_memory_1.find(row => row.record_kind === 'impression'); assert.equal(impression.summary, '@text:' + JSON.stringify('@text:"0007"')); assert.equal(impression.pinned, 'true');
+  assert.equal(snapshot.rows.sheet_shiro_memory_2.find(row => row.record_kind === 'transaction').amount, n.encodeNativeText(ledger.transactions[0].amount));
+});
+test('first old raw v2 transaction canonicalizes storage losslessly and retains old audits through two impression updates', async () => {
+  const ledger = richLedger(), initial = n.createNativeFourTableExport(ledger, scope());
+  for (const [tableIndex, table] of n.NATIVE_FOUR_TABLES.entries()) {
+    const sheet = initial[table.key]; for (const row of sheet.content.slice(1)) for (let column = 1; column < row.length; column++) row[column] = n.decodeNativeText(row[column]);
+    const oldAudit = n.nativeCommitRow(tableIndex, ledger, undefined, n.ledgerToNativeRows(ledger, scope())[table.key].map(row => row.record_id), []);
+    sheet.content.push([String(sheet.content.length), ...table.columns.map(column => oldAudit[column.sql])]); sheet.sourceData.note = sheet.sourceData.note.split('纯数字TEXT')[0];
+  }
+  assert.deepEqual(n.readNativeSnapshot(initial, scope()).ledger, ledger);
+  const f = fixture(initial), store = repository(f), originalAudit = Object.fromEntries(n.NATIVE_FOUR_TABLES.map(table => [table.key, clone(f.data[table.key].content.at(-1))]));
+  try {
+    const input = { id: 'after-codec-1', world: ledger.world, subject: '00042', summary: '@text:保持原文', evidence: '第一次实际观察', source: 'user', pinned: true, at: at(21) };
+    const expected = j.appendImpression(ledger, input).ledger, first = await store.transact(ledger.accountId, value => j.appendImpression(value, input)); assert.deepEqual(first.ledger, expected);
+    for (const table of n.NATIVE_FOUR_TABLES) { assert.ok(f.data[table.key].content.some(row => JSON.stringify(row) === JSON.stringify(originalAudit[table.key])), 'old commit audit remains byte-exact'); const rows = n.readNativeSnapshot(f.data, scope()).rows[table.key]; assert.ok(rows.filter(row => row.record_kind !== 'commit').every(row => row.record_order.startsWith('@text:'))); }
+    const secondInput = { ...input, id: 'after-codec-2', evidence: '第二次实际观察', pinned: false, at: at(22) }, second = await store.transact(ledger.accountId, value => j.appendImpression(value, secondInput));
+    assert.deepEqual(second.ledger, j.appendImpression(expected, secondInput).ledger); assert.deepEqual(second.ledger.transactions, ledger.transactions); assert.deepEqual(second.ledger.inventory, ledger.inventory); assert.equal(second.ledger.balance, ledger.balance); assert.equal(f.calls, 2);
+  } finally { await store.close(); f.close(); }
+});
+test('CAS remains byte-strict when concurrent text representation changes decode to the same business value', async () => {
+  const ledger = c.createLedger('wallet', '00042', at(0)), f = fixture(n.createNativeFourTableExport(ledger, scope())), store = repository(f);
+  try {
+    f.before(() => { f.before(undefined); f.external(`UPDATE shiro_memory_2 SET account_label=${nativeSqlText('00042')} WHERE record_kind='account'`); });
+    await assert.rejects(store.transact('wallet', value => c.credit(value, creditInput())), code('NATIVE_COMMIT_FAILED'));
+    const current = n.readNativeSnapshot(f.data, scope()); assert.deepEqual(current.ledger, ledger, 'same decoded label does not authorize overwriting changed raw storage'); assert.equal(current.rows.sheet_shiro_memory_2.find(row => row.record_kind === 'account').account_label, '00042'); assert.equal(f.calls, 1);
+  } finally { await store.close(); f.close(); }
 });
 test('real SQLite fixture restores native authority in one batch, keeps unrelated tables/preferences/locks, refuses second account and returns deep copies', async () => {
   const f = fixture(), store = repository(f), other = clone(f.data.sheet_other), mate = clone(f.data.mate);

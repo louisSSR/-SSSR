@@ -29,6 +29,7 @@ export function nativeControllerHarness({ load, core, protocol, income, response
   };
   const api = {
     exportTableAsJson: () => currentState().data,
+    refreshDataAndWorldbook: async () => options.nativeRefresh ? options.nativeRefresh() : true,
     executeSqlQuery(request) { const rows = currentState().db.prepare(request.sql).all().map(row => ({ ...row })); return { columns: ['shiro_native_sql_ready'], values: rows.map(row => [row.shiro_native_sql_ready]), rows, rowCount: rows.length }; },
     registerTableUpdateCallback: cb => callbacks.add(cb), unregisterTableUpdateCallback: cb => callbacks.delete(cb),
     async executeSqlBatch(request) {

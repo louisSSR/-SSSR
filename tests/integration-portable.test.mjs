@@ -40,6 +40,24 @@ test('a late API answer from A is discarded after chat B becomes current', async
   const task = h.controller.settle(); await pause(); h.changeChat('chat-B'); api.resolve(response([effect()])); await task;
   assert.equal(h.records.get('wallet').balance, '10'); assert.equal(h.records.get('wallet').events.length, 1); await h.controller.dispose();
 });
+test('failed native runtime refresh clears consumers without changing the confirmed native ledger', async () => {
+  const h = harness({}, { nativeRefresh: async () => false }); await h.controller.start();
+  const before = h.records.get('wallet');
+  await h.controller.refresh();
+  assert.deepEqual(h.records.get('wallet'), before);
+  assert.equal(h.controller.state.ledger, null); assert.equal(h.controller.state.memory, null);
+  assert.equal(h.controller.state.busy, false); assert.equal(h.prompts.at(-1).value, '');
+  assert.match(h.controller.state.error, /重新载入未完成/); await h.controller.dispose();
+});
+test('late explicit native refresh from A cannot publish a notice or source after switching to B', async () => {
+  const pending = deferred(), b = core.setWorld(core.credit(core.createLedger('wallet'), income('B')).ledger, '世界B').ledger;
+  const h = harness({}, { nativeRefresh: () => pending.promise, chatBLedger: b }); await h.controller.start();
+  const task = h.controller.refresh(); await pause(); h.changeChat('chat-B'); await pause();
+  pending.resolve(false); await task; await pause();
+  assert.equal(h.controller.state.world, '世界B'); assert.equal(h.controller.state.ledger.world, '世界B');
+  assert.equal(h.controller.state.error, ''); assert.equal(h.controller.state.notice, '');
+  assert.equal(h.controller.state.busy, false); await h.controller.dispose();
+});
 test('queued native lock must recheck current chat before crediting a late A operation', async () => {
   const h = harness(); await h.controller.start(); h.setGeneration(() => Promise.resolve(response([effect()])));
   const hold = h.holdTransaction(), task = h.controller.settle(); await hold.entered; h.changeChat('chat-B'); hold.release(); await task;

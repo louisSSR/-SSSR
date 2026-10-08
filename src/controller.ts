@@ -98,6 +98,24 @@ export function createController(){
     if(!store||!current(m))return;
     await refresh(m);
   }
+  async function refreshNativeRuntime(){
+    if(!store||!hasChat())return;
+    const owner=mark();state.busy=true;
+    try{
+      await verify(owner);
+      if(document.getElementById(MODULE_ID)?.hasAttribute('data-native-database-open'))throw new Error('请先关闭原生数据库窗口，再重新载入四表。');
+      const api=discoverDatabaseApi();
+      if(typeof api?.refreshDataAndWorldbook!=='function')throw new Error('当前数据库缺少原生重载接口，请在原数据库完成重载后再核验。');
+      // Explicit user refresh heals the official 1.2.5 B→A empty write-provider transition.
+      // Background reads remain read-only, and no failed business operation is retried.
+      const refreshed=await api.refreshDataAndWorldbook();
+      if(!current(owner))return;
+      if(discoverDatabaseApi()!==api||refreshed!==true)throw new Error('原生数据库重新载入未完成，四表尚未重新确认。');
+      await sync(owner,true);
+      if(alive&&owner.epoch===epoch&&owner.chat===chatIdentity()&&owner.handle===state.handle)notify('当前聊天的原生四表已重新载入，保存已核验。');
+    }catch(error){if(current(owner))clearNativeConsumers();throw error;}
+    finally{if(alive&&owner.epoch===epoch&&owner.chat===chatIdentity()&&owner.handle===state.handle)state.busy=false;}
+  }
   async function boundWorldbook():Promise<string>{
     const c=context(),ch=c.characters?.[c.characterId],name=ch?.data?.extensions?.world;
     if(!name)return '';
@@ -335,6 +353,6 @@ export function createController(){
     await api.openVisualizer();
   });}
   async function dispose(){alive=false;epoch++;publishSnapshot();snapshotListeners.clear();clearTimeout(timer);clearInterval(nativePoll);if(nativeApi&&nativeCallback)nativeApi.unregisterTableUpdateCallback?.(nativeCallback);nativeApi=null;nativeCallback=undefined;unsub.forEach(fn=>fn());channel?.close();try{setLedgerPrompt('');}catch{}await store?.close();}
-  return {state,start,dispose,createAccount,selectAccount,buy,inventoryAction,enableTables,exportLedger,importLedger,exportTables,exportMemory,exportCompleteMemory,readMemorySnapshot,subscribeMemorySnapshots,taskAction,saveImpression,listLegacyBackups,exportLegacyBackup,openNativeDatabase,refreshMemory:()=>run(()=>inject()),saveSettings,refresh:()=>run(()=>sync(mark(),true)),generateWorld:()=>enqueue('world'),dispatchTasks:()=>enqueue('quests'),settle:()=>enqueue('settle'),sync:()=>run(()=>sync(mark(),true)),downloadReceipt:()=>download('WJWK-settle.txt',state.receipt,'text/plain'),open:()=>{state.open=true;void run(()=>refresh());},close:()=>{state.open=false;state.selectedQuote=null;}};
+  return {state,start,dispose,createAccount,selectAccount,buy,inventoryAction,enableTables,exportLedger,importLedger,exportTables,exportMemory,exportCompleteMemory,readMemorySnapshot,subscribeMemorySnapshots,taskAction,saveImpression,listLegacyBackups,exportLegacyBackup,openNativeDatabase,refreshMemory:()=>run(()=>inject()),saveSettings,refresh:()=>run(()=>refreshNativeRuntime()),generateWorld:()=>enqueue('world'),dispatchTasks:()=>enqueue('quests'),settle:()=>enqueue('settle'),sync:()=>run(()=>sync(mark(),true)),downloadReceipt:()=>download('WJWK-settle.txt',state.receipt,'text/plain'),open:()=>{state.open=true;void run(()=>refresh());},close:()=>{state.open=false;state.selectedQuote=null;}};
 }
 export type Controller=ReturnType<typeof createController>;

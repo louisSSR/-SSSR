@@ -1,6 +1,6 @@
 import { assertLedgerContinuation, createLedger, LedgerError, validateLedger, type Ledger, type OperationResult } from './core';
 import type { AutoCardUpdaterApi, ChatSheets } from './database';
-import { NATIVE_FOUR_TABLES, createNativeFourTableExport, ledgerToNativeRows, nativeCommitRow, readNativeSnapshot, type NativeRow, type NativeRows, type NativeScope } from './native-schema';
+import { NATIVE_FOUR_TABLES, createNativeFourTableExport, ledgerToNativeRows, nativeCommitRow, readNativeSnapshot, encodeNativeRow, type NativeRow, type NativeRows, type NativeScope } from './native-schema';
 
 export type { NativeScope } from './native-schema';
 export interface NativeBatchResult { success: boolean; saved?: boolean; changes?: number; appliedEdits?: number; modifiedKeys?: string[]; errors?: string[]; error?: string; messageIndex?: number; saveError?: string }
@@ -59,11 +59,11 @@ function planBatch(before: Snapshot, next: Ledger, scope: NativeScope): { sql: s
   const proposed = ledgerToNativeRows(next, scope), expectedRows = copy(before.rows), statements: string[] = [], targetSheetKeys: string[] = [];
   NATIVE_FOUR_TABLES.forEach((table, index) => {
     const prior = new Map(before.rows[table.key].filter(row => row.record_kind !== 'commit').map(row => [row.record_id, row]));
-    const nextRows = proposed[table.key], nextIds = new Set(nextRows.map(row => row.record_id));
+    const nextRows = proposed[table.key].map(encodeNativeRow), nextIds = new Set(nextRows.map(row => row.record_id));
     if ([...prior.keys()].some(id => !nextIds.has(id))) fail('HISTORY_REWRITE', '原生业务历史不可删除或替换身份');
     const inserted = nextRows.filter(row => !prior.has(row.record_id)), updated = nextRows.filter(row => prior.has(row.record_id) && !equal(prior.get(row.record_id), row));
     if (!inserted.length && !updated.length) return;
-    const audit = nativeCommitRow(index, next, before.ledger?.revision, inserted.map(row => row.record_id!), updated.map(row => row.record_id!));
+    const audit = encodeNativeRow(nativeCommitRow(index, next, before.ledger?.revision, inserted.map(row => row.record_id!), updated.map(row => row.record_id!)));
     // The first real persisted record forces NOT NULL failure on stale data. A zero-row UPDATE is never the guard.
     statements.push(insertSql(table, audit, oldTableGuard(table, before.rows[table.key])));
     inserted.forEach(row => statements.push(insertSql(table, row)));

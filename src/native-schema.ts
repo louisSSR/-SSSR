@@ -8,6 +8,21 @@ export interface NativeScope { origin: string; handle: string; chat: string; epo
 export type NativeTableKey = 'sheet_shiro_memory_1' | 'sheet_shiro_memory_2' | 'sheet_shiro_memory_3' | 'sheet_shiro_memory_4';
 export type NativeRow = Record<string, string>;
 export type NativeRows = Record<NativeTableKey, NativeRow[]>;
+const TEXT_PREFIX = '@text:';
+const NUMERIC_TEXT = /^-?\d+(\.\d+)?$/;
+const TEXT_CODEC_NOTE = '纯数字TEXT与以@text:开头的原文使用显式@text:加JSON字符串编码，商店解码显示原文；这是防止数据库冷加载丢精度和前导0，请保留编码。';
+/** Official snapshot hydration emits bare numeric literals even for TEXT columns.
+ * Keep exact decimals/leading zeros and escape literal reserved prefixes. */
+export function encodeNativeText(value: string): string { return NUMERIC_TEXT.test(value) || value.startsWith(TEXT_PREFIX) ? TEXT_PREFIX + JSON.stringify(value) : value; }
+export function decodeNativeText(value: string): string {
+  if (!value.startsWith(TEXT_PREFIX)) return value; // Existing raw v2 values remain readable.
+  let decoded: unknown;
+  try { decoded = JSON.parse(value.slice(TEXT_PREFIX.length)); } catch { return broken('原生TEXT编码不是完整JSON字符串'); }
+  if (typeof decoded !== 'string' || encodeNativeText(decoded) !== value) broken('原生TEXT编码类型或规范格式不兼容');
+  return decoded;
+}
+export function encodeNativeRow(row: NativeRow): NativeRow { return Object.fromEntries(Object.entries(row).map(([key, value]) => [key, encodeNativeText(value)])); }
+function decodeNativeRow(row: NativeRow): NativeRow { return Object.fromEntries(Object.entries(row).map(([key, value]) => [key, decodeNativeText(value)])); }
 interface Column { sql: string; label: string }
 const c = (sql: string, label: string): Column => ({ sql, label });
 const common = [c('record_id', '记录ID'), c('account_id', '本源账户'), c('record_kind', '记录种类'), c('record_order', '稳定序号'), c('business_id', '业务ID'), c('commit_revision', '提交版本'), c('previous_revision', '此前版本'), c('committed_at', '提交时间'), c('audit_changes', '提交记录ID清单')];
@@ -34,6 +49,7 @@ export function createNativeFourTableTemplate(): ChatSheets {
       exportConfig: { enabled: false, splitByRow: false, entryName: table.name, entryType: 'constant', keywords: '', preventRecursion: true, injectionTemplate: '', extraIndexEnabled: false, extraIndexEntryName: `${table.name}·索引`, extraIndexColumns: [], extraIndexColumnModes: {}, extraIndexInjectionTemplate: '', entryPlacement: placement(10000 + index), extraIndexPlacement: placement(10010 + index), fixedEntryPlacement: placement(99990), fixedIndexPlacement: placement(99991), injectIntoWorldbook: false },
     };
   });
+  for (const table of NATIVE_FOUR_TABLES) (out[table.key] as DatabaseSheet).sourceData!.note += TEXT_CODEC_NOTE;
   return out;
 }
 
@@ -80,7 +96,7 @@ function sameRow(a: NativeRow, b: NativeRow): boolean { return Object.keys(a).le
 /** Snapshot is already detached by the repository; this function never reads IndexedDB. */
 export function readNativeSnapshot(value: unknown, scope: Pick<NativeScope, 'origin' | 'handle' | 'chat'>): { rows: NativeRows; ledger?: Ledger; tables: ChatSheets; keys: Record<NativeTableKey, string> } {
   if (!object(value)) throw new LedgerError('NATIVE_NOT_READY', '原生数据库尚未返回当前聊天表格');
-  const tables = value as ChatSheets, rows = {} as NativeRows, keys = {} as Record<NativeTableKey, string>;
+  const tables = value as ChatSheets, rows = {} as NativeRows, rawRows = {} as NativeRows, keys = {} as Record<NativeTableKey, string>;
   for (const table of NATIVE_FOUR_TABLES) {
     // The official chat template importer regenerates sheet keys/uid from display names.
     // Only one exact display identity with the complete v2 contract may bind a logical slot.
@@ -91,17 +107,19 @@ export function readNativeSnapshot(value: unknown, scope: Pick<NativeScope, 'ori
     if (!object(sheet) || !Array.isArray(sheet.content) || sheet.uid !== liveKey || !identical(sheet.content[0], ['row_id', ...table.columns.map(column => column.label)]) || !object(sheet.sourceData) || sheet.sourceData.ddl !== nativeDDL(table) || typeof sheet.sourceData.note !== 'string' || !sheet.sourceData.note.includes(NATIVE_OWNERSHIP)) throw new LedgerError('NATIVE_SCHEMA_VERSION', `「${table.name}」不是兼容的v2业务真源表，已停止读写。请保留旧表并单独安装v2模板。`);
     keys[table.key] = liveKey;
     const ids = new Set<string>(), nativeRowIds = new Set<number>();
-    rows[table.key] = sheet.content.slice(1).map((values: unknown) => {
+    rawRows[table.key] = sheet.content.slice(1).map((values: unknown) => {
       if (!Array.isArray(values) || values.length !== table.columns.length + 1 || !Number.isSafeInteger(Number(values[0])) || Number(values[0]) < 1 || values.slice(1).some(cell => typeof cell !== 'string')) broken(`「${table.name}」的行长度、原生行号或TEXT列不兼容`);
       if (nativeRowIds.has(Number(values[0]))) broken(`「${table.name}」的原生行号重复`); nativeRowIds.add(Number(values[0]));
       const row: NativeRow = Object.fromEntries(table.columns.map((column, index) => [column.sql, values[index + 1] as string]));
-      if (!row.record_id || ids.has(row.record_id)) broken('记录ID不能为空或重复'); ids.add(row.record_id);
-      if (!(table.kinds as readonly string[]).includes(row.record_kind!) && row.record_kind !== 'commit') broken(`「${table.name}」包含未知记录种类`);
-      ordinal(row.record_order!); return row;
+      const decoded = decodeNativeRow(row);
+      if (!decoded.record_id || ids.has(decoded.record_id)) broken('记录ID不能为空或重复'); ids.add(decoded.record_id);
+      if (!(table.kinds as readonly string[]).includes(decoded.record_kind!) && decoded.record_kind !== 'commit') broken(`「${table.name}」包含未知记录种类`);
+      ordinal(decoded.record_order!); return row;
     });
+    rows[table.key] = rawRows[table.key].map(decodeNativeRow);
   }
   const allRows = Object.values(rows).flat(), accounts = rows.sheet_shiro_memory_2.filter(row => row.record_kind === 'account');
-  if (accounts.length === 0) { if (allRows.length) broken('四表含业务或提交记录却缺少本源账户，禁止初始化覆盖'); return { rows, tables, keys }; }
+  if (accounts.length === 0) { if (allRows.length) broken('四表含业务或提交记录却缺少本源账户，禁止初始化覆盖'); return { rows: rawRows, tables, keys }; }
   if (accounts.length !== 1) broken('每个聊天只能有唯一一份本源账户');
   const account = accounts[0]!;
   if (account.scope_origin !== scope.origin || account.scope_handle !== scope.handle || account.scope_chat !== scope.chat) throw new LedgerError('NATIVE_SCOPE_MISMATCH', '原生本源属于另一源站、用户或聊天，不能合并或覆盖');
@@ -136,12 +154,13 @@ export function readNativeSnapshot(value: unknown, scope: Pick<NativeScope, 'ori
       last = revision;
     }
   }
-  return { rows, ledger, tables, keys };
+  // CAS compares actual stored bytes, never a decoded or normalized approximation.
+  return { rows: rawRows, ledger, tables, keys };
 }
 
 /** Complete, lossless native v2 records; this is not the bounded model summary. */
 export function createNativeFourTableExport(ledger: Ledger, scope: Pick<NativeScope, 'origin' | 'handle' | 'chat'>): ChatSheets {
   const out = createNativeFourTableTemplate(), rows = ledgerToNativeRows(ledger, scope);
-  NATIVE_FOUR_TABLES.forEach(table => { const sheet = out[table.key] as DatabaseSheet; rows[table.key].forEach((row, index) => sheet.content.push([String(index + 1), ...table.columns.map(column => row[column.sql]!)])); });
+  NATIVE_FOUR_TABLES.forEach(table => { const sheet = out[table.key] as DatabaseSheet; rows[table.key].forEach((row, index) => { const stored = encodeNativeRow(row); sheet.content.push([String(index + 1), ...table.columns.map(column => stored[column.sql]!)]); }); });
   return out;
 }
