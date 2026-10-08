@@ -19,23 +19,35 @@
   "sheet_shiro_memory_1": {
     "uid": "sheet_shiro_memory_1",
     "name": "蝴蝶·一、重要印象",
+    "orderNo": 0,
     "content": [
       [
         "row_id",
         "记录ID",
         "本源账户",
-        "对象 / 世界",
-        "最新印象"
+        "记录种类",
+        "稳定序号",
+        "业务ID",
+        "提交版本",
+        "此前版本",
+        "提交时间",
+        "提交记录ID清单",
+        "所属世界",
+        "印象对象",
+        "重要印象",
+        "成立证据",
+        "印象来源",
+        "优先保留",
+        "记录时间"
       ]
     ],
-    "orderNo": 0,
     "sourceData": {
-      "note": "白·蝴蝶四表记忆快照。完整历史保存在商店本源账本。本表只读展示，不是余额真源。请勿另行打开世界书注入，以免与插件预算摘要重复。",
-      "initNode": "由商店导入快照。",
-      "insertNode": "禁止AI改账或编造事实。",
-      "updateNode": "重新导出快照刷新；不要自动填表。",
-      "deleteNode": "不删除本源历史。",
-      "ddl": "CREATE TABLE shiro_memory_1 (\n row_id INTEGER PRIMARY KEY, -- 行号\n c0 TEXT NOT NULL UNIQUE, -- 记录ID\n c1 TEXT, -- 本源账户\n c2 TEXT, -- 对象 / 世界\n c3 TEXT -- 最新印象\n);"
+      "note": "白·蝴蝶四表业务真源 v2。可读业务列就是账本真源；嵌套数组仅保存在对应JSON列。所有金额为精确十进制TEXT，余额、累计入账与消费由交易顺序推导，不另设可编辑余额。交易、计功、固定标准和已结算历史不得改写；报价只可追加别名。业务主键为记录ID，row_id由数据库维护。请勿打开世界书注入或自动填表。",
+      "initNode": "保持空表，等待商店在当前聊天创建或显式恢复唯一一份本源。",
+      "insertNode": "仅由商店通过公开SQL批次提交；不要自动填表，不要编造事实或点数。",
+      "updateNode": "可读业务列为真源；修改后必须通过完整业务校验。禁止自动填表或自由修改余额、已结算交易、报价和历史。",
+      "deleteNode": "历史与提交审计只可追加，不删除原有业务记录。",
+      "ddl": "CREATE TABLE shiro_memory_1 ( -- 蝴蝶·一、重要印象\n  row_id INTEGER PRIMARY KEY, -- 原生行号，不是业务ID\n  record_id TEXT NOT NULL UNIQUE, -- 记录ID\n  account_id TEXT NOT NULL DEFAULT '', -- 本源账户\n  record_kind TEXT NOT NULL DEFAULT '', -- 记录种类\n  record_order TEXT NOT NULL DEFAULT '', -- 稳定序号\n  business_id TEXT NOT NULL DEFAULT '', -- 业务ID\n  commit_revision TEXT NOT NULL DEFAULT '', -- 提交版本\n  previous_revision TEXT NOT NULL DEFAULT '', -- 此前版本\n  committed_at TEXT NOT NULL DEFAULT '', -- 提交时间\n  audit_changes TEXT NOT NULL DEFAULT '', -- 提交记录ID清单\n  world TEXT NOT NULL DEFAULT '', -- 所属世界\n  subject TEXT NOT NULL DEFAULT '', -- 印象对象\n  summary TEXT NOT NULL DEFAULT '', -- 重要印象\n  evidence TEXT NOT NULL DEFAULT '', -- 成立证据\n  source TEXT NOT NULL DEFAULT '', -- 印象来源\n  pinned TEXT NOT NULL DEFAULT '', -- 优先保留\n  created_at TEXT NOT NULL DEFAULT '' -- 记录时间\n);"
     },
     "updateConfig": {
       "uiSentinel": -1,
@@ -53,7 +65,7 @@
       "preventRecursion": true,
       "injectionTemplate": "",
       "extraIndexEnabled": false,
-      "extraIndexEntryName": "蝴蝶·因果总览·索引",
+      "extraIndexEntryName": "蝴蝶·一、重要印象·索引",
       "extraIndexColumns": [],
       "extraIndexColumnModes": {},
       "extraIndexInjectionTemplate": "",
@@ -83,24 +95,59 @@
   "sheet_shiro_memory_2": {
     "uid": "sheet_shiro_memory_2",
     "name": "蝴蝶·二、点数账目",
+    "orderNo": 1,
     "content": [
       [
         "row_id",
         "记录ID",
         "本源账户",
-        "项目",
-        "明细",
-        "点数"
+        "记录种类",
+        "稳定序号",
+        "业务ID",
+        "提交版本",
+        "此前版本",
+        "提交时间",
+        "提交记录ID清单",
+        "存储版本",
+        "账户称呼",
+        "当前世界",
+        "账本版本",
+        "建立时间",
+        "最后更新",
+        "可选历史字段",
+        "所属源站",
+        "酒馆用户",
+        "所属聊天",
+        "所属世界",
+        "交易种类",
+        "因果点金额",
+        "交易前余额",
+        "交易后余额",
+        "关联记录ID",
+        "物品数量",
+        "接收者",
+        "完整回执",
+        "发生时间",
+        "计功请求ID",
+        "因果来源",
+        "新增结果",
+        "成立证据",
+        "计功参照ID",
+        "计功种类",
+        "独立有效改变",
+        "关联结果ID",
+        "规格键",
+        "固定影响规格",
+        "固定收益"
       ]
     ],
-    "orderNo": 1,
     "sourceData": {
-      "note": "白·蝴蝶四表记忆快照。完整历史保存在商店本源账本。本表只读展示，不是余额真源。请勿另行打开世界书注入，以免与插件预算摘要重复。",
-      "initNode": "由商店导入快照。",
-      "insertNode": "禁止AI改账或编造事实。",
-      "updateNode": "重新导出快照刷新；不要自动填表。",
-      "deleteNode": "不删除本源历史。",
-      "ddl": "CREATE TABLE shiro_memory_2 (\n row_id INTEGER PRIMARY KEY, -- 行号\n c0 TEXT NOT NULL UNIQUE, -- 记录ID\n c1 TEXT, -- 本源账户\n c2 TEXT, -- 项目\n c3 TEXT, -- 明细\n c4 TEXT -- 点数\n);"
+      "note": "白·蝴蝶四表业务真源 v2。可读业务列就是账本真源；嵌套数组仅保存在对应JSON列。所有金额为精确十进制TEXT，余额、累计入账与消费由交易顺序推导，不另设可编辑余额。交易、计功、固定标准和已结算历史不得改写；报价只可追加别名。业务主键为记录ID，row_id由数据库维护。请勿打开世界书注入或自动填表。",
+      "initNode": "保持空表，等待商店在当前聊天创建或显式恢复唯一一份本源。",
+      "insertNode": "仅由商店通过公开SQL批次提交；不要自动填表，不要编造事实或点数。",
+      "updateNode": "可读业务列为真源；修改后必须通过完整业务校验。禁止自动填表或自由修改余额、已结算交易、报价和历史。",
+      "deleteNode": "历史与提交审计只可追加，不删除原有业务记录。",
+      "ddl": "CREATE TABLE shiro_memory_2 ( -- 蝴蝶·二、点数账目\n  row_id INTEGER PRIMARY KEY, -- 原生行号，不是业务ID\n  record_id TEXT NOT NULL UNIQUE, -- 记录ID\n  account_id TEXT NOT NULL DEFAULT '', -- 本源账户\n  record_kind TEXT NOT NULL DEFAULT '', -- 记录种类\n  record_order TEXT NOT NULL DEFAULT '', -- 稳定序号\n  business_id TEXT NOT NULL DEFAULT '', -- 业务ID\n  commit_revision TEXT NOT NULL DEFAULT '', -- 提交版本\n  previous_revision TEXT NOT NULL DEFAULT '', -- 此前版本\n  committed_at TEXT NOT NULL DEFAULT '', -- 提交时间\n  audit_changes TEXT NOT NULL DEFAULT '', -- 提交记录ID清单\n  schema_version TEXT NOT NULL DEFAULT '', -- 存储版本\n  account_label TEXT NOT NULL DEFAULT '', -- 账户称呼\n  current_world TEXT NOT NULL DEFAULT '', -- 当前世界\n  ledger_revision TEXT NOT NULL DEFAULT '', -- 账本版本\n  created_at TEXT NOT NULL DEFAULT '', -- 建立时间\n  updated_at TEXT NOT NULL DEFAULT '', -- 最后更新\n  optional_fields TEXT NOT NULL DEFAULT '', -- 可选历史字段\n  scope_origin TEXT NOT NULL DEFAULT '', -- 所属源站\n  scope_handle TEXT NOT NULL DEFAULT '', -- 酒馆用户\n  scope_chat TEXT NOT NULL DEFAULT '', -- 所属聊天\n  world TEXT NOT NULL DEFAULT '', -- 所属世界\n  transaction_kind TEXT NOT NULL DEFAULT '', -- 交易种类\n  amount TEXT NOT NULL DEFAULT '', -- 因果点金额\n  balance_before TEXT NOT NULL DEFAULT '', -- 交易前余额\n  balance_after TEXT NOT NULL DEFAULT '', -- 交易后余额\n  reference_id TEXT NOT NULL DEFAULT '', -- 关联记录ID\n  quantity TEXT NOT NULL DEFAULT '', -- 物品数量\n  recipient TEXT NOT NULL DEFAULT '', -- 接收者\n  receipt TEXT NOT NULL DEFAULT '', -- 完整回执\n  occurred_at TEXT NOT NULL DEFAULT '', -- 发生时间\n  request_id TEXT NOT NULL DEFAULT '', -- 计功请求ID\n  source TEXT NOT NULL DEFAULT '', -- 因果来源\n  outcome TEXT NOT NULL DEFAULT '', -- 新增结果\n  evidence TEXT NOT NULL DEFAULT '', -- 成立证据\n  standard_id TEXT NOT NULL DEFAULT '', -- 计功参照ID\n  event_kind TEXT NOT NULL DEFAULT '', -- 计功种类\n  independent_change TEXT NOT NULL DEFAULT '', -- 独立有效改变\n  parent_result_id TEXT NOT NULL DEFAULT '', -- 关联结果ID\n  spec_key TEXT NOT NULL DEFAULT '', -- 规格键\n  standard_spec TEXT NOT NULL DEFAULT '', -- 固定影响规格\n  reward TEXT NOT NULL DEFAULT '' -- 固定收益\n);"
     },
     "updateConfig": {
       "uiSentinel": -1,
@@ -118,19 +165,19 @@
       "preventRecursion": true,
       "injectionTemplate": "",
       "extraIndexEnabled": false,
-      "extraIndexEntryName": "蝴蝶·因果总览·索引",
+      "extraIndexEntryName": "蝴蝶·二、点数账目·索引",
       "extraIndexColumns": [],
       "extraIndexColumnModes": {},
       "extraIndexInjectionTemplate": "",
       "entryPlacement": {
         "position": "at_depth_as_system",
         "depth": 2,
-        "order": 10000
+        "order": 10001
       },
       "extraIndexPlacement": {
         "position": "at_depth_as_system",
         "depth": 2,
-        "order": 10010
+        "order": 10011
       },
       "fixedEntryPlacement": {
         "position": "at_depth_as_system",
@@ -148,24 +195,52 @@
   "sheet_shiro_memory_3": {
     "uid": "sheet_shiro_memory_3",
     "name": "蝴蝶·三、消费与所得",
+    "orderNo": 2,
     "content": [
       [
         "row_id",
         "记录ID",
         "本源账户",
-        "所得",
-        "实际状态",
-        "已消费点数"
+        "记录种类",
+        "稳定序号",
+        "业务ID",
+        "提交版本",
+        "此前版本",
+        "提交时间",
+        "提交记录ID清单",
+        "所属世界",
+        "名称",
+        "体系分类",
+        "规格键",
+        "完整所得",
+        "实际强度",
+        "数量规格",
+        "作用范围",
+        "持续时间",
+        "使用次数",
+        "承接条件",
+        "跨界效力",
+        "固定价格",
+        "存续类别",
+        "别名",
+        "旧版报价ID",
+        "新增规格",
+        "确认或取得时间",
+        "购买交易ID",
+        "报价ID",
+        "取得数量",
+        "剩余数量",
+        "已用数量",
+        "已移交数量"
       ]
     ],
-    "orderNo": 2,
     "sourceData": {
-      "note": "白·蝴蝶四表记忆快照。完整历史保存在商店本源账本。本表只读展示，不是余额真源。请勿另行打开世界书注入，以免与插件预算摘要重复。",
-      "initNode": "由商店导入快照。",
-      "insertNode": "禁止AI改账或编造事实。",
-      "updateNode": "重新导出快照刷新；不要自动填表。",
-      "deleteNode": "不删除本源历史。",
-      "ddl": "CREATE TABLE shiro_memory_3 (\n row_id INTEGER PRIMARY KEY, -- 行号\n c0 TEXT NOT NULL UNIQUE, -- 记录ID\n c1 TEXT, -- 本源账户\n c2 TEXT, -- 所得\n c3 TEXT, -- 实际状态\n c4 TEXT -- 已消费点数\n);"
+      "note": "白·蝴蝶四表业务真源 v2。可读业务列就是账本真源；嵌套数组仅保存在对应JSON列。所有金额为精确十进制TEXT，余额、累计入账与消费由交易顺序推导，不另设可编辑余额。交易、计功、固定标准和已结算历史不得改写；报价只可追加别名。业务主键为记录ID，row_id由数据库维护。请勿打开世界书注入或自动填表。",
+      "initNode": "保持空表，等待商店在当前聊天创建或显式恢复唯一一份本源。",
+      "insertNode": "仅由商店通过公开SQL批次提交；不要自动填表，不要编造事实或点数。",
+      "updateNode": "可读业务列为真源；修改后必须通过完整业务校验。禁止自动填表或自由修改余额、已结算交易、报价和历史。",
+      "deleteNode": "历史与提交审计只可追加，不删除原有业务记录。",
+      "ddl": "CREATE TABLE shiro_memory_3 ( -- 蝴蝶·三、消费与所得\n  row_id INTEGER PRIMARY KEY, -- 原生行号，不是业务ID\n  record_id TEXT NOT NULL UNIQUE, -- 记录ID\n  account_id TEXT NOT NULL DEFAULT '', -- 本源账户\n  record_kind TEXT NOT NULL DEFAULT '', -- 记录种类\n  record_order TEXT NOT NULL DEFAULT '', -- 稳定序号\n  business_id TEXT NOT NULL DEFAULT '', -- 业务ID\n  commit_revision TEXT NOT NULL DEFAULT '', -- 提交版本\n  previous_revision TEXT NOT NULL DEFAULT '', -- 此前版本\n  committed_at TEXT NOT NULL DEFAULT '', -- 提交时间\n  audit_changes TEXT NOT NULL DEFAULT '', -- 提交记录ID清单\n  world TEXT NOT NULL DEFAULT '', -- 所属世界\n  name TEXT NOT NULL DEFAULT '', -- 名称\n  category TEXT NOT NULL DEFAULT '', -- 体系分类\n  spec_key TEXT NOT NULL DEFAULT '', -- 规格键\n  effect_content TEXT NOT NULL DEFAULT '', -- 完整所得\n  effect_strength TEXT NOT NULL DEFAULT '', -- 实际强度\n  effect_quantity TEXT NOT NULL DEFAULT '', -- 数量规格\n  effect_range TEXT NOT NULL DEFAULT '', -- 作用范围\n  effect_duration TEXT NOT NULL DEFAULT '', -- 持续时间\n  effect_uses TEXT NOT NULL DEFAULT '', -- 使用次数\n  effect_conditions TEXT NOT NULL DEFAULT '', -- 承接条件\n  effect_cross_world TEXT NOT NULL DEFAULT '', -- 跨界效力\n  price TEXT NOT NULL DEFAULT '', -- 固定价格\n  reward_kind TEXT NOT NULL DEFAULT '', -- 存续类别\n  aliases_json TEXT NOT NULL DEFAULT '', -- 别名\n  previous_quote_id TEXT NOT NULL DEFAULT '', -- 旧版报价ID\n  differences_json TEXT NOT NULL DEFAULT '', -- 新增规格\n  created_at TEXT NOT NULL DEFAULT '', -- 确认或取得时间\n  purchase_id TEXT NOT NULL DEFAULT '', -- 购买交易ID\n  quote_id TEXT NOT NULL DEFAULT '', -- 报价ID\n  acquired TEXT NOT NULL DEFAULT '', -- 取得数量\n  remaining TEXT NOT NULL DEFAULT '', -- 剩余数量\n  consumed TEXT NOT NULL DEFAULT '', -- 已用数量\n  transferred TEXT NOT NULL DEFAULT '' -- 已移交数量\n);"
     },
     "updateConfig": {
       "uiSentinel": -1,
@@ -183,19 +258,19 @@
       "preventRecursion": true,
       "injectionTemplate": "",
       "extraIndexEnabled": false,
-      "extraIndexEntryName": "蝴蝶·因果总览·索引",
+      "extraIndexEntryName": "蝴蝶·三、消费与所得·索引",
       "extraIndexColumns": [],
       "extraIndexColumnModes": {},
       "extraIndexInjectionTemplate": "",
       "entryPlacement": {
         "position": "at_depth_as_system",
         "depth": 2,
-        "order": 10000
+        "order": 10002
       },
       "extraIndexPlacement": {
         "position": "at_depth_as_system",
         "depth": 2,
-        "order": 10010
+        "order": 10012
       },
       "fixedEntryPlacement": {
         "position": "at_depth_as_system",
@@ -213,23 +288,40 @@
   "sheet_shiro_memory_4": {
     "uid": "sheet_shiro_memory_4",
     "name": "蝴蝶·四、连锁反应与任务",
+    "orderNo": 3,
     "content": [
       [
         "row_id",
         "记录ID",
         "本源账户",
-        "类型 / 标识",
-        "现况与下一步"
+        "记录种类",
+        "稳定序号",
+        "业务ID",
+        "提交版本",
+        "此前版本",
+        "提交时间",
+        "提交记录ID清单",
+        "所属世界",
+        "作用来源",
+        "已结算作用",
+        "后续追踪",
+        "记录状态",
+        "最后更新",
+        "任务标题",
+        "任务目标",
+        "任务缘由",
+        "来源余波ID",
+        "任务派发时间",
+        "完成结算事件ID"
       ]
     ],
-    "orderNo": 3,
     "sourceData": {
-      "note": "白·蝴蝶四表记忆快照。完整历史保存在商店本源账本。本表只读展示，不是余额真源。请勿另行打开世界书注入，以免与插件预算摘要重复。",
-      "initNode": "由商店导入快照。",
-      "insertNode": "禁止AI改账或编造事实。",
-      "updateNode": "重新导出快照刷新；不要自动填表。",
-      "deleteNode": "不删除本源历史。",
-      "ddl": "CREATE TABLE shiro_memory_4 (\n row_id INTEGER PRIMARY KEY, -- 行号\n c0 TEXT NOT NULL UNIQUE, -- 记录ID\n c1 TEXT, -- 本源账户\n c2 TEXT, -- 类型 / 标识\n c3 TEXT -- 现况与下一步\n);"
+      "note": "白·蝴蝶四表业务真源 v2。可读业务列就是账本真源；嵌套数组仅保存在对应JSON列。所有金额为精确十进制TEXT，余额、累计入账与消费由交易顺序推导，不另设可编辑余额。交易、计功、固定标准和已结算历史不得改写；报价只可追加别名。业务主键为记录ID，row_id由数据库维护。请勿打开世界书注入或自动填表。",
+      "initNode": "保持空表，等待商店在当前聊天创建或显式恢复唯一一份本源。",
+      "insertNode": "仅由商店通过公开SQL批次提交；不要自动填表，不要编造事实或点数。",
+      "updateNode": "可读业务列为真源；修改后必须通过完整业务校验。禁止自动填表或自由修改余额、已结算交易、报价和历史。",
+      "deleteNode": "历史与提交审计只可追加，不删除原有业务记录。",
+      "ddl": "CREATE TABLE shiro_memory_4 ( -- 蝴蝶·四、连锁反应与任务\n  row_id INTEGER PRIMARY KEY, -- 原生行号，不是业务ID\n  record_id TEXT NOT NULL UNIQUE, -- 记录ID\n  account_id TEXT NOT NULL DEFAULT '', -- 本源账户\n  record_kind TEXT NOT NULL DEFAULT '', -- 记录种类\n  record_order TEXT NOT NULL DEFAULT '', -- 稳定序号\n  business_id TEXT NOT NULL DEFAULT '', -- 业务ID\n  commit_revision TEXT NOT NULL DEFAULT '', -- 提交版本\n  previous_revision TEXT NOT NULL DEFAULT '', -- 此前版本\n  committed_at TEXT NOT NULL DEFAULT '', -- 提交时间\n  audit_changes TEXT NOT NULL DEFAULT '', -- 提交记录ID清单\n  world TEXT NOT NULL DEFAULT '', -- 所属世界\n  source TEXT NOT NULL DEFAULT '', -- 作用来源\n  settled TEXT NOT NULL DEFAULT '', -- 已结算作用\n  tracking TEXT NOT NULL DEFAULT '', -- 后续追踪\n  status TEXT NOT NULL DEFAULT '', -- 记录状态\n  updated_at TEXT NOT NULL DEFAULT '', -- 最后更新\n  title TEXT NOT NULL DEFAULT '', -- 任务标题\n  objective TEXT NOT NULL DEFAULT '', -- 任务目标\n  reason TEXT NOT NULL DEFAULT '', -- 任务缘由\n  source_ripple_id TEXT NOT NULL DEFAULT '', -- 来源余波ID\n  created_at TEXT NOT NULL DEFAULT '', -- 任务派发时间\n  completion_event_id TEXT NOT NULL DEFAULT '' -- 完成结算事件ID\n);"
     },
     "updateConfig": {
       "uiSentinel": -1,
@@ -247,19 +339,19 @@
       "preventRecursion": true,
       "injectionTemplate": "",
       "extraIndexEnabled": false,
-      "extraIndexEntryName": "蝴蝶·因果总览·索引",
+      "extraIndexEntryName": "蝴蝶·四、连锁反应与任务·索引",
       "extraIndexColumns": [],
       "extraIndexColumnModes": {},
       "extraIndexInjectionTemplate": "",
       "entryPlacement": {
         "position": "at_depth_as_system",
         "depth": 2,
-        "order": 10000
+        "order": 10003
       },
       "extraIndexPlacement": {
         "position": "at_depth_as_system",
         "depth": 2,
-        "order": 10010
+        "order": 10013
       },
       "fixedEntryPlacement": {
         "position": "at_depth_as_system",

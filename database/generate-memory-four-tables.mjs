@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const require = createRequire(import.meta.url), ts = require('typescript');
 const modules = new Map();
 function load(name) {
-  if (!['core', 'memory', 'database', 'memory-database'].includes(name)) throw new Error(`Unexpected template dependency: ${name}`);
+  if (!['core', 'native-schema'].includes(name)) throw new Error(`Unexpected template dependency: ${name}`);
   if (modules.has(name)) return modules.get(name);
   const source = readFileSync(new URL(`../src/${name}.ts`, import.meta.url), 'utf8');
   const output = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
@@ -18,14 +18,7 @@ function load(name) {
   return module.exports;
 }
 
-export function createEmptyMemoryTableTemplate() {
-  const ledger = load('core').createLedger('empty-template', '空白模板', '2026-10-06T00:00:00.000Z');
-  const pack = load('memory').buildMemory(ledger);
-  // The account table normally contains aggregate rows even for a new account.
-  // An installable template must have no account, balance, example, or story rows.
-  pack.tables.forEach(table => { table.rows = []; });
-  return load('memory-database').createMemoryTableExport(pack, '');
-}
+export function createEmptyMemoryTableTemplate() { return load('native-schema').createNativeFourTableTemplate(); }
 
 export const templateFile = new URL('./butterfly-memory-four-tables.json', import.meta.url);
 export const serializeMemoryTableTemplate = () => JSON.stringify(createEmptyMemoryTableTemplate(), null, 2) + '\n';

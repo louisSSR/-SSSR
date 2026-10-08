@@ -1,24 +1,34 @@
 import { reactive, toRaw } from 'vue';
-import { LedgerStore } from './storage';
+import { NativeFourTableRepository } from './native-storage';
+import { createNativeFourTableTemplate, createNativeFourTableExport } from './native-schema';
+import { readLegacyBackups } from './legacy-backup';
 import { credit, registerQuote, purchase, setWorld, upsertRipple, useInventory, transferInventory, BASELINE_QUOTE_ID, type Ledger, type Quote } from './core';
 import { makeRequest, parseWorldReply, type RequestMode } from './protocol';
 import { appendImpression, registerQuest, transitionQuest } from './journal';
 import { buildMemory } from './memory';
 import { countPrompt, clipUtf8 } from './prompt-budget';
-import { createMemoryTableExport, createCompleteMemoryTableExport, readCompleteMemoryPages, type MemoryPageOptions } from './memory-database';
+import { createMemoryTableExport, readCompleteMemoryPages, type MemoryPageOptions } from './memory-database';
 import { buildRoundReceipt } from './settlement-view';
-import { discoverDatabaseApi, callDatabaseAI, enableButterflyTables, syncButterflyLedger, createLedgerTableExport } from './database';
-import { MODULE_ID, context, chatIdentity, hasChat, verifiedHandle, storyContext, setLedgerPrompt, download, serverBackup } from './host';
+import { discoverDatabaseApi, callDatabaseAI } from './database';
+import { MODULE_ID, context, chatIdentity, hasChat, verifiedHandle, verifyNativeChatSaved, storyContext, setLedgerPrompt, download, serverBackup } from './host';
 
 interface Settings {accountId:string;provider:'host'|'database';preset:string;autoWorld:boolean;autoSettle:boolean;worldNotes:string;syncChats:string[];memoryTokenBudget:number}
 export type MemorySnapshotNotice=Readonly<{chat:string;account:string;revision:number}>|null;
 const defaults:Settings={accountId:'',provider:'host',preset:'',autoWorld:true,autoSettle:true,worldNotes:'',syncChats:[],memoryTokenBudget:2048};
 export function createController(){
-  const state=reactive({open:false,tab:'home',ledger:null as Ledger|null,accounts:[] as Ledger[],handle:'',busy:false,status:'正在连接酒馆…',error:'',notice:'',world:'尚未识别世界',systems:[] as string[],worldEvidence:'',activeIds:[] as string[],goal:'',search:'',category:'全部',affordable:false,settings:{...defaults},selectedQuote:null as Quote|null,quantity:1,accountLabel:'我的本源',importError:'',syncStatus:'当前聊天尚未启用',receipt:'',receiptLabel:'最近一笔交易回执',apiStatus:'待连接',ready:false,memory:null as ReturnType<typeof buildMemory>|null,memoryTokens:0,memoryMethod:'',memoryQuery:'',requestTokens:0,impressionSubject:'',impressionSummary:'',impressionPinned:true});
-  let store:LedgerStore|undefined,epoch=0,alive=true,key='',timer:ReturnType<typeof setTimeout>|undefined;
+  const state=reactive({open:false,tab:'home',ledger:null as Ledger|null,accounts:[] as Ledger[],legacyAccounts:[] as {accountId:string;label:string;balance:string}[],handle:'',busy:false,status:'正在连接酒馆…',error:'',notice:'',world:'尚未识别世界',systems:[] as string[],worldEvidence:'',activeIds:[] as string[],goal:'',search:'',category:'全部',affordable:false,settings:{...defaults},selectedQuote:null as Quote|null,quantity:1,accountLabel:'我的本源',importError:'',syncStatus:'当前聊天尚未启用',receipt:'',receiptLabel:'最近一笔交易回执',apiStatus:'待连接',ready:false,memory:null as ReturnType<typeof buildMemory>|null,memoryTokens:0,memoryMethod:'',memoryQuery:'',requestTokens:0,impressionSubject:'',impressionSummary:'',impressionPinned:true});
+  let store:NativeFourTableRepository|undefined,epoch=0,alive=true,key='',timer:ReturnType<typeof setTimeout>|undefined;
+  let nativePoll:ReturnType<typeof setInterval>|undefined,nativeApi:ReturnType<typeof discoverDatabaseApi>=null;
+  let nativeCallback:((data:unknown,meta?:{persisted:boolean})=>void)|undefined;
   let queue=Promise.resolve();const unsub:(()=>void)[]=[];let channel:BroadcastChannel|undefined;
   const clean=<T>(x:T):T=>JSON.parse(JSON.stringify(x));
   const saveSettings=()=>{if(key)localStorage.setItem(key,JSON.stringify(state.settings));void inject();};
+  function loadChatSettings(){
+    key=`${MODULE_ID}:settings:v2:${state.handle}:${chatIdentity()}`;
+    let saved:Partial<Settings>={};
+    try{const value=JSON.parse(localStorage.getItem(key)??'{}');if(value&&typeof value==='object'&&!Array.isArray(value))saved=value;}catch{}
+    state.settings={accountId:typeof saved.accountId==='string'?saved.accountId:'',provider:saved.provider==='database'?'database':'host',preset:typeof saved.preset==='string'?saved.preset.slice(0,256):'',autoWorld:saved.autoWorld===undefined?true:saved.autoWorld===true,autoSettle:saved.autoSettle===undefined?true:saved.autoSettle===true,worldNotes:typeof saved.worldNotes==='string'?saved.worldNotes.slice(0,20000):'',syncChats:[],memoryTokenBudget:[2048,4096,8192].includes(saved.memoryTokenBudget as number)?saved.memoryTokenBudget!:2048};
+  }
   const mark=()=>({epoch,chat:chatIdentity(),account:state.settings.accountId,handle:state.handle});
   const current=(m:ReturnType<typeof mark>)=>alive&&m.epoch===epoch&&m.chat===chatIdentity()&&m.account===state.settings.accountId&&m.handle===state.handle;
   const notify=(message:string)=>{state.notice=message;state.error='';};
@@ -32,6 +42,10 @@ export function createController(){
   };
   let receiptMark:{account:string;chat:string;revision:number}|undefined;
   let injectionTicket=0;
+  function clearNativeConsumers(){
+    injectionTicket++;state.ledger=null;state.memory=null;state.memoryTokens=0;state.accounts=[];state.settings.accountId='';state.selectedQuote=null;state.activeIds=[];state.world='原生四表待核验';state.systems=[];state.worldEvidence='';receiptMark=undefined;state.receipt='';
+    setLedgerPrompt('');publishSnapshot();
+  }
   const inject=async()=>{
     const ticket=++injectionTicket;
     if(!state.ledger||state.ledger.accountId!==state.settings.accountId||!hasChat()){setLedgerPrompt('');state.memory=null;state.memoryTokens=0;return;}
@@ -51,11 +65,20 @@ export function createController(){
     }
   };
   async function refresh(m=mark()){
-    if(!store||!m.account)return;
-    const l=await store.read(m.account);
+    if(!store||!hasChat())return;
+    let accounts:Ledger[];
+    try{await store.refresh();if(!current(m))return;accounts=await store.list();}catch(error){if(current(m))clearNativeConsumers();throw error;}
+    if(!current(m))return;
+    state.accounts=accounts;
+    if(!accounts.some(account=>account.accountId===m.account)){
+      state.settings.accountId=accounts.length===1?accounts[0]!.accountId:'';m=mark();saveSettings();
+    }
+    let l:Ledger|undefined;
+    try{l=m.account?await store.read(m.account):undefined;}catch(error){if(current(m))clearNativeConsumers();throw error;}
     if(!current(m))return;
     state.ledger=l??null;
-    state.accounts=await store.list();
+    state.ready=true;state.syncStatus=l?`原生四表 · 版本 ${l.revision}`:'原生四表已就绪，等待初始化本源';
+    if(l){state.world=l.world;if(!state.activeIds.length)state.activeIds=[BASELINE_QUOTE_ID,...l.quotes.filter(q=>q.world===l.world).map(q=>q.id)];}
     if(current(m)){
       inject();
       publishSnapshot();
@@ -67,17 +90,13 @@ export function createController(){
   async function verify(m:ReturnType<typeof mark>){
     if(!current(m))throw new Error('聊天或本源已切换，本次操作已取消');
     const handle=await verifiedHandle();
-    if(handle!==m.handle){epoch++;injectionTicket++;state.ledger=null;state.memory=null;state.memoryTokens=0;state.accounts=[];state.settings.accountId='';state.selectedQuote=null;state.ready=false;state.busy=false;setLedgerPrompt('');publishSnapshot();throw new Error('登录账户已变化，已清除本页旧账户资料，请刷新酒馆');}
+    if(handle!==m.handle){epoch++;injectionTicket++;state.ledger=null;state.memory=null;state.memoryTokens=0;state.accounts=[];state.legacyAccounts=[];state.settings.accountId='';state.selectedQuote=null;state.ready=false;state.busy=false;setLedgerPrompt('');publishSnapshot();throw new Error('登录账户已变化，已清除本页旧账户资料，请刷新酒馆');}
     if(!current(m))throw new Error('登录账户或聊天已变化，本次操作已取消');
   }
   async function run(action:()=>Promise<void>,rethrow=false){try{state.error='';await action();}catch(e){if(alive)fail(e);if(rethrow)throw e;}}
   async function sync(m=mark(),force=false){
-    if(!store||!m.account||!current(m))return;
-    if(!force&&!state.settings.syncChats.includes(m.chat))return;
-    const api=discoverDatabaseApi();if(!api){state.syncStatus='数据库尚未就绪，账本已保留';return;}
-    const ledger=await store.read(m.account);if(!ledger||!current(m))return;
-    try{const r=await syncButterflyLedger(api,ledger,{expectedChatId:m.chat,getChatId:()=>current(m)?chatIdentity():null});if(current(m))state.syncStatus=`已同步 · ${r.tables} 张表 · 版本 ${r.revision}`;}
-    catch(e){if(current(m))state.syncStatus=`账本已保存，同步待重试：${e instanceof Error?e.message:e}`;}
+    if(!store||!current(m))return;
+    await refresh(m);
   }
   async function boundWorldbook():Promise<string>{
     const c=context(),ch=c.characters?.[c.characterId],name=ch?.data?.extensions?.world;
@@ -87,6 +106,7 @@ export function createController(){
   }
   async function generate(mode:RequestMode,m=mark()){
     if(!current(m)||!store||!m.account||!hasChat())return;
+    if(document.getElementById(MODULE_ID)?.hasAttribute('data-native-database-open'))throw new Error('请先关闭原生数据库窗口，再识别世界、派发委托或核对因果。');
     await verify(m);
     const before=await store.read(m.account);if(!before||!current(m))return;
     const story=storyContext();if(mode==='settle'&&!story.evidence){notify('当前没有可结算的已完成故事');return;}
@@ -107,7 +127,7 @@ export function createController(){
         state.requestTokens=counted.count;
         if(counted.count<=8000){budgetPassed=true;break;}
       }
-      if(!budgetPassed)throw new Error('评估请求超过 8000 Token/保守字节预算，未调用模型；请检查酒馆分词器。完整档案仍在本地。');
+      if(!budgetPassed)throw new Error('评估请求超过 8000 Token/保守字节预算，未调用模型；请检查酒馆分词器。完整档案仍在原生四表。');
       if(!current(m)||storyContext().stamp!==story.stamp)throw new Error('调用前聊天或故事已变化，旧评估已取消。');
       let raw:string;
       if(provider==='database'){
@@ -161,12 +181,31 @@ export function createController(){
     const m=mark();queue=queue.catch(()=>{}).then(async()=>{if(!current(m))return;try{await generate(mode,m);}catch(e){if(current(m))fail(e);}});return queue;
   }
   function onChat(){
-    epoch++;state.busy=false;state.activeIds=[];state.world=hasChat()?'等待识别当前世界':'请先打开聊天';state.systems=[];state.worldEvidence='';state.selectedQuote=null;state.error='';
-    state.syncStatus=state.settings.syncChats.includes(chatIdentity())?'等待同步':'当前聊天尚未启用';
-    inject();publishSnapshot();void run(()=>refresh());clearTimeout(timer);
-    if(state.ready&&state.settings.accountId&&state.settings.autoWorld&&hasChat()){
-      if(state.settings.provider==='host'&&context().onlineStatus==='no_connection'){state.status='等待酒馆 API 连接';}
-      else timer=setTimeout(()=>void enqueue('world'),600);
+    epoch++;injectionTicket++;state.busy=false;state.ledger=null;state.memory=null;state.accounts=[];state.legacyAccounts=[];state.memoryTokens=0;state.activeIds=[];state.world=hasChat()?'等待读取当前聊天四表':'请先打开聊天';state.systems=[];state.worldEvidence='';state.selectedQuote=null;state.error='';receiptMark=undefined;state.receipt='';
+    setLedgerPrompt('');clearTimeout(timer);loadChatSettings();publishSnapshot();state.syncStatus='等待原生四表载入';
+    const owner=mark();
+    void run(async()=>{
+      await refresh(owner);
+      if(!alive||owner.epoch!==epoch||owner.chat!==chatIdentity())return;
+      if(state.settings.accountId&&state.settings.autoWorld&&hasChat()){
+        if(state.settings.provider==='host'&&context().onlineStatus==='no_connection')state.status='等待酒馆 API 连接';
+        else timer=setTimeout(()=>void enqueue('world'),600);
+      }
+    });
+  }
+  function attachNative(){
+    const next=discoverDatabaseApi();if(next===nativeApi)return;
+    if(nativeApi&&nativeCallback)nativeApi.unregisterTableUpdateCallback?.(nativeCallback);
+    if(nativeApi)clearNativeConsumers();
+    nativeApi=next;nativeCallback=undefined;
+    if(next){
+      nativeCallback=(_data,meta)=>{
+        if(!alive||next!==nativeApi)return;
+        if(meta?.persisted===false){state.syncStatus='原生四表有未保存更改，业务写入暂时暂停';return;}
+        if(!state.busy)void run(()=>refresh());
+      };
+      next.registerTableUpdateCallback?.(nativeCallback);
+      if(store&&hasChat())void run(()=>refresh());
     }
   }
   function subscribe(){
@@ -184,29 +223,27 @@ export function createController(){
     subscribe();
     try{
       const handle=await verifiedHandle();if(!alive)return;state.handle=handle;
-      store=new LedgerStore({origin:location.origin,handle});key=`${MODULE_ID}:settings:${handle}`;
-      let saved:Partial<Settings>={};try{const parsed=JSON.parse(localStorage.getItem(key)??'{}');if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))saved=parsed;}catch{/* malformed settings do not overwrite ledger */}
-      state.settings={
-        accountId:typeof saved.accountId==='string'?saved.accountId:'',
-        provider:saved.provider==='database'?'database':'host',
-        preset:typeof saved.preset==='string'?saved.preset.slice(0,256):'',
-        autoWorld:saved.autoWorld===undefined?defaults.autoWorld:saved.autoWorld===true,
-        autoSettle:saved.autoSettle===undefined?defaults.autoSettle:saved.autoSettle===true,
-        worldNotes:typeof saved.worldNotes==='string'?saved.worldNotes.slice(0,20000):'',
-        syncChats:Array.isArray(saved.syncChats)?saved.syncChats.filter(v=>typeof v==='string'):[],
-        memoryTokenBudget:[2048,4096,8192].includes(saved.memoryTokenBudget as number)?saved.memoryTokenBudget!:2048,
-      };
-      state.accounts=await store.list();if(!alive)return;
-      if(!state.accounts.some(a=>a.accountId===state.settings.accountId))state.settings.accountId='';
-      state.ready=true;state.status='已连接';state.apiStatus='使用酒馆或数据库中已配置的 API';
+      store=new NativeFourTableRepository({
+        scope:()=>({origin:location.origin,handle:state.handle,chat:chatIdentity(),epoch}),getApi:()=>discoverDatabaseApi(),
+        canWrite:()=>alive&&hasChat()&&!document.getElementById(MODULE_ID)?.hasAttribute('data-native-database-open'),
+        verifyPersisted:async({stage,scope,tables,ledger})=>{
+          if(scope.epoch!==epoch||scope.handle!==state.handle||scope.chat!==chatIdentity())throw new Error('原生四表保存期间聊天已切换');
+          const verified=await verifyNativeChatSaved(scope.chat,tables,stage!=='preflight'||!!ledger);
+          if(scope.epoch!==epoch||scope.handle!==state.handle||scope.chat!==chatIdentity())throw new Error('原生四表保存核验后聊天已切换');
+          return verified;
+        },
+      });
+      loadChatSettings();state.ready=true;state.status='已连接原生四表';state.apiStatus='使用酒馆或数据库中已配置的 API';
       if(typeof BroadcastChannel!=='undefined'){channel=new BroadcastChannel(`${MODULE_ID}:${handle}`);channel.onmessage=()=>{void run(()=>refresh());};}
-      await refresh();onChat();
+      attachNative();nativePoll=setInterval(attachNative,1000);
+      const foreground=()=>{if(alive&&!document.hidden)void run(()=>refresh());};document.addEventListener('visibilitychange',foreground);unsub.push(()=>document.removeEventListener('visibilitychange',foreground));
+      onChat();
     }catch(e){fail(e);}
   }
   async function createAccount(){await run(async()=>{
     if(!store)throw new Error('账户存储尚未就绪');await verifiedHandle().then(h=>{if(h!==state.handle)throw new Error('登录账户已变化，请刷新');});
     const ledger=await store.create(crypto.randomUUID(),state.accountLabel.trim()||'我的本源');
-    epoch++;injectionTicket++;setLedgerPrompt('');state.memory=null;state.ledger=ledger;state.settings.accountId=ledger.accountId;saveSettings();await refresh();onChat();notify('本源已创建，余额从 0 点开始');
+    epoch++;injectionTicket++;setLedgerPrompt('');state.memory=null;state.ledger=ledger;state.settings.accountId=ledger.accountId;saveSettings();await refresh();notify('当前聊天的原生四表已初始化，余额从 0 点开始');
   });}
   async function selectAccount(id:string){epoch++;injectionTicket++;state.ledger=null;state.memory=null;state.memoryTokens=0;setLedgerPrompt('');state.settings.accountId=id;publishSnapshot();saveSettings();await run(()=>refresh());onChat();}
   async function buy(){await run(async()=>{
@@ -221,9 +258,9 @@ export function createController(){
     changed();await refresh(m);await sync(m);notify(action==='use'?'实际消耗已记录':'物品归属已更新');
   });}
   async function enableTables(){await run(async()=>{
-    const m=mark();await verify(m);if(!hasChat())throw new Error('请先打开聊天');const api=discoverDatabaseApi();if(!api)throw new Error('请先启用龙血玄黄·数据库并等待加载');
-    await enableButterflyTables(api,{expectedChatId:m.chat,getChatId:()=>current(m)?chatIdentity():null});
-    if(!current(m))return;if(!state.settings.syncChats.includes(m.chat))state.settings.syncChats.push(m.chat);saveSettings();await sync(m,true);notify('蝴蝶表格已接入当前聊天，后续自动同步');
+    if(!hasChat())throw new Error('请先打开聊天');
+    download('蝴蝶效应_原生四表_v2_空模板.json',JSON.stringify(createNativeFourTableTemplate(),null,2));
+    notify('已下载原生四表空模板。请在数据库原生模板入口合并、保存，关闭编辑器后刷新；现有表不会被插件覆盖。');
   });}
   async function exportLedger(server=false){await run(async()=>{
     if(!store||!state.settings.accountId)throw new Error('请先选择本源');const m=mark();await verify(m);const backup=await store.export(m.account);await verify(m);const text=JSON.stringify(backup,null,2);
@@ -232,12 +269,12 @@ export function createController(){
   });}
   async function importLedger(file:File){await run(async()=>{
     if(!store)throw new Error('存储尚未就绪');if(file.size>30_000_000)throw new Error('备份超过30MB');
-    const content=JSON.parse(await file.text()),m=mark();await verify(m);
-    const l=await store.import(content,crypto.randomUUID());state.accounts=await store.list();notify(`已恢复为独立本源“${l.label}”，请选择后继续；原账本保留`);
+    const content=await file.text(),m=mark();await verify(m);
+    const l=await store.import(content);if(!current(m))return;state.settings.accountId=l.accountId;saveSettings();await refresh();notify(`已将完整历史恢复到当前空四表“${l.label}”；原有数据不会合并或覆盖`);
   });}
   async function exportTables(){await run(async()=>{
     if(!store||!state.settings.accountId)throw new Error('请先选择本源');const m=mark();await verify(m);const l=await store.read(m.account);await verify(m);if(!l)throw new Error('本源不存在');
-    download(`蝴蝶六表-${m.account}-${Date.now()}.json`,JSON.stringify(createLedgerTableExport(l),null,2));notify('已导出含真实账目与完整规格的原生六表文件');
+    download(`蝴蝶原生四表-${m.account}-${Date.now()}.json`,JSON.stringify(createNativeFourTableExport(l,{origin:location.origin,handle:m.handle,chat:m.chat}),null,2));notify('已导出原生四表完整业务数据，包含报价、交易与历史');
   });}
   async function exportMemory(){await run(async()=>{
     if(!store||!state.settings.accountId)throw new Error('请先选择本源');const m=mark();await verify(m);await inject();await verify(m);
@@ -256,7 +293,7 @@ export function createController(){
     const value=await readCommittedMemoryLedger();if(!value)return null;
     if(!current(value.mark))throw new Error('读取期间聊天或本源已切换，请重新读取四表');
     // A bounded detached page, never the ledger/store or the complete native export.
-    return {version:1 as const,scope:value.scope,revision:value.ledger.revision,updatedAt:value.ledger.updatedAt,tables:readCompleteMemoryPages(value.ledger,options)};
+    return {version:1 as const,source:'native-four-tables' as const,scope:value.scope,revision:value.ledger.revision,updatedAt:value.ledger.updatedAt,tables:readCompleteMemoryPages(value.ledger,options)};
   }
   function subscribeMemorySnapshots(listener:(notice:MemorySnapshotNotice)=>void){
     if(typeof listener!=='function')throw new TypeError('四表订阅需要回调函数');
@@ -267,8 +304,8 @@ export function createController(){
   async function exportCompleteMemory(){await run(async()=>{
     const value=await readCommittedMemoryLedger();if(!value)throw new Error('请先打开聊天并选择本源');
     if(!current(value.mark))throw new Error('导出前聊天或本源已切换，请重新导出四表');
-    download(`蝴蝶四表-完整业务记录-${value.scope.account}-${Date.now()}.json`,JSON.stringify(createCompleteMemoryTableExport(value.ledger),null,2));
-    notify('已导出完整四表业务记录，不受 AI 摘要预算裁剪。恢复本源仍须使用完整账本备份。');
+    download(`蝴蝶四表-完整业务记录-${value.scope.account}-${Date.now()}.json`,JSON.stringify(createNativeFourTableExport(value.ledger,value.scope),null,2));
+    notify('已导出完整原生四表，不受 AI 摘要预算裁剪。跨聊天恢复须显式导入到空四表。');
   },true);}
   async function taskAction(questId:string,status:'active'|'dismissed'){await run(async()=>{
     if(!store)return;const m=mark();await verify(m);
@@ -280,7 +317,24 @@ export function createController(){
     await store.transact(m.account,l=>{if(!current(m))throw new Error('聊天或本源已切换');return appendImpression(l,{id:crypto.randomUUID(),world:l.world,subject,summary,evidence:'使用者手动确认的记忆，不作为自动计功证据。',source:'user',pinned});});
     if(current(m)){state.impressionSubject='';state.impressionSummary='';changed();await refresh(m);notify('重要印象已永久保存；相同对象的旧记录保留在档案中。');}
   });}
-  async function dispose(){alive=false;epoch++;publishSnapshot();snapshotListeners.clear();clearTimeout(timer);unsub.forEach(fn=>fn());channel?.close();try{setLedgerPrompt('');}catch{}await store?.close();}
-  return {state,start,dispose,createAccount,selectAccount,buy,inventoryAction,enableTables,exportLedger,importLedger,exportTables,exportMemory,exportCompleteMemory,readMemorySnapshot,subscribeMemorySnapshots,taskAction,saveImpression,refreshMemory:()=>run(()=>inject()),saveSettings,refresh:()=>run(()=>refresh()),generateWorld:()=>enqueue('world'),dispatchTasks:()=>enqueue('quests'),settle:()=>enqueue('settle'),sync:()=>run(()=>sync(mark(),true)),downloadReceipt:()=>download('WJWK-settle.txt',state.receipt,'text/plain'),open:()=>{state.open=true;void inject();},close:()=>{state.open=false;state.selectedQuote=null;}};
+  async function listLegacyBackups(){await run(async()=>{
+    const m=mark();await verify(m);const rows=await readLegacyBackups(location.origin,m.handle);await verify(m);
+    state.legacyAccounts=rows.map(({accountId,label,balance})=>({accountId,label,balance}));
+    notify(rows.length?'仅找到旧版备份；请选择一份导出，不会自动导入或合并余额。':'此浏览器、源站和用户没有旧版本地备份。');
+  });}
+  async function exportLegacyBackup(accountId:string){await run(async()=>{
+    const m=mark();await verify(m);const rows=await readLegacyBackups(location.origin,m.handle);await verify(m);
+    const ledger=rows.find(row=>row.accountId===accountId);if(!ledger)throw new Error('未找到指定旧备份');
+    download(`蝴蝶旧版备份-${accountId}-${Date.now()}.json`,JSON.stringify({format:'shiro-butterfly-ledger',version:1,exportedAt:new Date().toISOString(),scope:{origin:location.origin,handle:m.handle},ledger},null,2));
+    notify('旧备份已导出，原件未改动。可在指定聊天的空四表显式恢复；已有原生本源不会被覆盖。');
+  });}
+  function openNativeDatabase(){void run(async()=>{
+    const api=discoverDatabaseApi() as {openVisualizer?:()=>unknown}|null;
+    if(typeof api?.openVisualizer!=='function')throw new Error('原生数据库未就绪，请先启用数据库扩展');
+    state.open=false;state.selectedQuote=null;
+    await api.openVisualizer();
+  });}
+  async function dispose(){alive=false;epoch++;publishSnapshot();snapshotListeners.clear();clearTimeout(timer);clearInterval(nativePoll);if(nativeApi&&nativeCallback)nativeApi.unregisterTableUpdateCallback?.(nativeCallback);nativeApi=null;nativeCallback=undefined;unsub.forEach(fn=>fn());channel?.close();try{setLedgerPrompt('');}catch{}await store?.close();}
+  return {state,start,dispose,createAccount,selectAccount,buy,inventoryAction,enableTables,exportLedger,importLedger,exportTables,exportMemory,exportCompleteMemory,readMemorySnapshot,subscribeMemorySnapshots,taskAction,saveImpression,listLegacyBackups,exportLegacyBackup,openNativeDatabase,refreshMemory:()=>run(()=>inject()),saveSettings,refresh:()=>run(()=>sync(mark(),true)),generateWorld:()=>enqueue('world'),dispatchTasks:()=>enqueue('quests'),settle:()=>enqueue('settle'),sync:()=>run(()=>sync(mark(),true)),downloadReceipt:()=>download('WJWK-settle.txt',state.receipt,'text/plain'),open:()=>{state.open=true;void run(()=>refresh());},close:()=>{state.open=false;state.selectedQuote=null;}};
 }
 export type Controller=ReturnType<typeof createController>;

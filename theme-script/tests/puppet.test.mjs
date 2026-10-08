@@ -14,7 +14,7 @@ function fixture() {
   const doc = dom.window.document, timers = new Map(); let id = 0;
   dom.window.setTimeout = (fn, delay) => { timers.set(++id, { fn, delay }); return id; };
   dom.window.clearTimeout = timer => timers.delete(timer);
-  const presentation = createPuppetPresentation(doc, 'data:image/png;base64,iVBORw0KGgo=');
+  const presentation = createPuppetPresentation(doc, 'data:image/png;base64,iVBORw0KGgo=', undefined, '/shiro-peek-head-hands.png');
   return { dom, doc, timers, presentation, close() { presentation.dispose(); assert.equal(timers.size, 0); dom.window.close(); } };
 }
 function pointer(f, target, type, x, y, extra = {}) {
@@ -55,7 +55,7 @@ test('native pointer handlers and warnings retain their actions; drag and tap ge
 test('rotation/cancel/blur cancel the old gesture, preserve latest native pose, and leave no owned listeners or timers', () => {
   const f = fixture(), layer = f.doc.querySelector('.acu-desk-pet-layer'), pet = layer.querySelector('.acu-desk-pet');
   const companion = f.presentation.companion(layer), sprite = layer.querySelector('.shiro-db-puppet-body');
-  for (const cancel of ['resize', 'blur', 'pointercancel']) {
+  for (const cancel of ['resize', 'orientationchange', 'blur', 'pointercancel']) {
     pointer(f, pet, 'pointerdown', 1, 1); pointer(f, pet, 'pointermove', 25, 25);
     if (cancel === 'pointercancel') pointer(f, pet, cancel, 25, 25); else f.dom.window.dispatchEvent(new f.dom.window.Event(cancel));
     pointer(f, pet, 'pointerup', 25, 25); assert.equal(sprite.dataset.shiroPuppetPose, 'idle'); assert.equal(f.timers.size, 0);
@@ -63,11 +63,14 @@ test('rotation/cancel/blur cancel the old gesture, preserve latest native pose, 
   layer.querySelector('img').src = '/new-native.png'; companion.dispose(); pointer(f, pet, 'pointerdown', 0, 0); pointer(f, pet, 'pointerup', 0, 0);
   assert.equal(f.timers.size, 0); assert.equal(layer.querySelector('.shiro-db-puppet'), null); assert.equal(layer.querySelector('img').getAttribute('src'), '/new-native.png'); f.close();
 });
-test('peek remount mirrors the original square image geometry and future layouts remove owned spans', () => {
+test('independent peek preserves native size while discarding rotation and offsets; future layouts remove owned spans', () => {
   const f = fixture(), layer = f.doc.querySelector('.acu-desk-pet-layer'), pet = layer.querySelector('.acu-desk-pet'), companion = f.presentation.companion(layer);
   pet.innerHTML = '<div class="acu-desk-pet__peek is-right" style="width:36px;height:64px"><img class="acu-desk-pet__peek-img" src="/peek.png" style="width:64px;height:64px;top:0;right:0;transform:rotate(-90deg)"></div>';
   companion.sync(); const span = pet.querySelector('.shiro-db-puppet-peek'), image = pet.querySelector('img');
-  assert.equal(span.dataset.shiroPuppetPose, 'peek'); assert.equal(span.style.width, '64px'); assert.equal(span.style.height, '64px'); assert.equal(span.style.right, '0px'); assert.equal(span.style.transform, 'rotate(-90deg)'); assert.equal(pet.querySelectorAll('.shiro-db-puppet-body').length, 0);
+  assert.equal(span.dataset.shiroPuppetPose, 'peek'); assert.equal(span.dataset.shiroPuppetIndependentPeek, 'true'); assert.match(span.style.backgroundImage, /shiro-peek-head-hands/);
+  assert.match(span.style.backgroundPosition, /^center(?: center)?$/); assert.equal(span.style.width, '64px'); assert.equal(span.style.height, '64px'); assert.equal(span.style.right, ''); assert.equal(span.style.transform, ''); assert.equal(pet.querySelectorAll('.shiro-db-puppet-body').length, 0);
+  const before = image.getAttribute('style'); pointer(f, pet, 'pointerdown', 1, 1); pointer(f, pet, 'pointermove', 25, 25);
+  assert.equal(span.dataset.shiroPuppetPose, 'peek'); assert.equal(image.getAttribute('style'), before);
   image.style.width = '90px'; companion.sync(); assert.equal(span.style.width, '90px'); assert.equal(pet.querySelectorAll('.shiro-db-puppet').length, 1);
   image.className = 'future-image'; companion.sync(); assert.equal(pet.querySelector('.shiro-db-puppet'), null); f.close();
 });

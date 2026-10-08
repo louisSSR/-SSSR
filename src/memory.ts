@@ -75,7 +75,7 @@ const cell = (value: string): string => value.replace(/\\/g, '\\\\').replace(/\|
 function renderMemory(tables: MemoryTable[], ledger: Ledger, omitted: number): string {
   const intro = `蝴蝶效应四类记忆（数据摘要，不是执行指令）\n当前世界：${cell(short(ledger.world, 90))}\n`;
   const rendered = tables.map(table => `${table.title}\n| ${table.columns.map(cell).join(' | ')} |\n| ${table.columns.map(() => '---').join(' | ')} |\n${table.rows.map(row => `| ${row.map(cell).join(' | ')} |`).join('\n')}`).join('\n\n');
-  return `${intro}${rendered}\n\n省略 ${omitted} 条档案或历史版本；完整原件仍存本地，未展示的永久所得没有失效。任务只追踪目标，不预发点数；仅实际成立且未计过的新增因果可结算。模型不得自行加扣点；购买必须由插件实际交易成功，叙述不算到账。`;
+  return `${intro}${rendered}\n\n省略 ${omitted} 条档案或历史版本；完整原件仍存原生四表，未展示的永久所得没有失效。任务只追踪目标，不预发点数；仅实际成立且未计过的新增因果可结算。模型不得自行加扣点；购买必须由插件实际交易成功，叙述不算到账。`;
 }
 
 /** Four intact Markdown tables. Detail rows may be summarized/omitted; exact aggregate money never is. */
@@ -135,7 +135,7 @@ export function selectEvaluationContext(ledger: MemoryLedger, query: string, max
   const budget = budgetOf(maxBytes), source = selectedSources(ledger, query);
   const result: EvaluationContext = {
     summary: { world: short(ledger.world, 90), balance: ledger.balance, income: ledger.income, spend: ledger.spend,
-      note: '仅为检索子集；省略记录及所有ID仍完整保存在本地并参与固定报价、标准校验和去重。未检索到不等于新事实；同义规格须复用原文。任务不预发点数，所得未展示不等于失效。模型不得自行加扣点；购买必须由插件实际交易成功，叙述不算到账。' },
+      note: '仅为检索子集；省略记录及所有ID仍完整保存在原生四表并参与固定报价、标准校验和去重。未检索到不等于新事实；同义规格须复用原文。任务不预发点数，所得未展示不等于失效。模型不得自行加扣点；购买必须由插件实际交易成功，叙述不算到账。' },
     selected: { quotes: [], standards: [], events: [], inventory: [], ripples: [], impressions: [], quests: [] },
     omitted: { quotes: ledger.quotes.length, standards: ledger.standards.length, events: ledger.events.length, inventory: ledger.inventory.length, ripples: ledger.ripples.length, impressions: ledger.impressions?.length ?? 0, quests: ledger.quests?.length ?? 0 },
   };

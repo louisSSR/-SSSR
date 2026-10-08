@@ -113,7 +113,12 @@ export function credit(ledger: Ledger, input: CreditInput): OperationResult<Caus
   const resultId = id(input.resultId, '实际结果 ID'), requestId = id(input.requestId, '请求 ID'), amount = normalizeAmount(input.amount);
   const spec = text(input.standardSpec, '计功规格').normalize('NFC').replace(/\s+/g, ' ');
   const retry = existingRequest(ledger, requestId, 'credit', resultId);
-  if (retry) { const event = ledger.events.find(e => e.id === resultId)!; if (amount !== event.amount || ledger.standards.find(s => s.id === event.standardId)?.key !== spec) fail('IDEMPOTENCY_CONFLICT', '请求重试的点数或计功参照与原记录不同'); return done(ledger, clone(event), true, retry.receipt); }
+  if (retry) {
+    const event = ledger.events.find(e => e.id === resultId)!;
+    const sameContent = text(input.world, '世界', 512) === event.world && text(input.source, '因果来源') === event.source && text(input.outcome, '新增结果') === event.outcome && text(input.evidence, '成立证据') === event.evidence && (input.independent !== false) === event.independent && (input.kind ?? 'initial') === event.kind && input.parentResultId === event.parentResultId && input.established === true && (input.at === undefined || date(input.at) === event.at);
+    if (amount !== event.amount || ledger.standards.find(s => s.id === event.standardId)?.key !== spec || !sameContent) fail('IDEMPOTENCY_CONFLICT', '同一请求重试的事实、点数或计功参照与原记录不同');
+    return done(ledger, clone(event), true, retry.receipt);
+  }
   if (input.established !== true) fail('NOT_ESTABLISHED', '仅已实际成立的新增改变可以入账');
   const old = ledger.events.find(e => e.id === resultId);
   if (old) { if (old.amount !== amount || ledger.standards.find(s => s.id === old.standardId)?.key !== spec) fail('RESULT_CONFLICT', '旧结果已结算；新增深化必须使用新的实际结果 ID'); return done(ledger, clone(old), true, ledger.transactions.find(t => t.id === old.requestId)!.receipt); }

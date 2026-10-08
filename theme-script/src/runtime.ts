@@ -1,5 +1,4 @@
 import { mountDatabaseTheme, type DatabaseThemeMount } from './database-theme';
-import type { MemorySnapshotSource, MemorySnapshotNotice } from './memory-view';
 
 export type ListenButton = (name: string, listener: () => void) => { stop: () => void };
 export const SCRIPT_OWNER_KEY = 'shiro-database-theme:helper-script-owner';
@@ -10,7 +9,7 @@ const SHOP_EVENT = 'shiro-butterfly-shop:availability';
 const CONFLICT = '请先关闭旧「白 · 空白棋局数据库主题」扩展或升级带内置主题的旧商店，再点「切换白主题」；本脚本不会替你停用其它扩展。';
 
 /** Owns only host appearance. All state is transient; no settings, variables or database data writes. */
-export function startThemeScript(frame: Window, embeddedPng: string, listenButton: ListenButton) {
+export function startThemeScript(frame: Window, embeddedPng: string, listenButton: ListenButton, embeddedPeekPng?: string) {
   if (frame === frame.parent) throw new Error('请将 JSON 导入酒馆助手脚本库运行。');
   const host = frame.parent as Window & typeof globalThis;
   const doc = host.document;
@@ -25,7 +24,7 @@ export function startThemeScript(frame: Window, embeddedPng: string, listenButto
   const stops: (() => void)[] = [];
   const state = { enabled: false, status: '等待数据库界面', error: '' };
   const service = { version: 1, provider: 'helper-script', state, setEnabled };
-  const owner = { provider: 'helper-script', version: '1.2.1', state, dispose };
+  const owner = { provider: 'helper-script', version: '1.3.0', state, dispose };
   registry[ownerKey] = owner;
 
   function inform(): void {
@@ -59,15 +58,6 @@ export function startThemeScript(frame: Window, embeddedPng: string, listenButto
     renderer?.setNavigate(shop?.version === 1 && typeof shop.open === 'function'
       ? tab => { const live = registry[Symbol.for(SHOP_KEY)]; if (!disposed && live?.version === 1 && typeof live.open === 'function') live.open(tab); }
       : undefined);
-    const memory: MemorySnapshotSource | undefined = shop?.version === 1 &&
-      typeof shop.readMemorySnapshot === 'function' && typeof shop.subscribeMemorySnapshots === 'function' && typeof shop.exportCompleteMemory === 'function'
-      ? {
-          readMemorySnapshot: options => registry[Symbol.for(SHOP_KEY)] === shop && !disposed ? shop.readMemorySnapshot(options) : Promise.resolve(null),
-          subscribeMemorySnapshots: listener => shop.subscribeMemorySnapshots((notice: MemorySnapshotNotice) => { if (!disposed && registry[Symbol.for(SHOP_KEY)] === shop) listener(notice); }),
-          exportCompleteMemory: () => registry[Symbol.for(SHOP_KEY)] === shop && !disposed ? shop.exportCompleteMemory() : Promise.reject(new Error('商店已停用')),
-        }
-      : undefined;
-    renderer.setMemorySource(memory);
   }
   function setEnabled(next: boolean): void {
     if (disposed) return;
@@ -75,7 +65,7 @@ export function startThemeScript(frame: Window, embeddedPng: string, listenButto
     state.error = ''; state.enabled = next === true;
     registry[themeKey] = service;
     if (!renderer) {
-      renderer = mountDatabaseTheme({ assetBase: '', embeddedPng, enabled: state.enabled, hostDocument: doc,
+      renderer = mountDatabaseTheme({ assetBase: '', embeddedPng, embeddedPeekPng, enabled: state.enabled, hostDocument: doc,
         onStatus: value => { state.status = value; publish(); } });
       refreshShop();
     } else renderer.setEnabled(state.enabled);

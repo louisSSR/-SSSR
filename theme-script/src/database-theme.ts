@@ -1,27 +1,25 @@
 import themeCss from './database-theme.css';
 import { createPuppetPresentation, type PuppetCompanion } from './puppet';
-import { createMemoryView, type MemorySnapshotSource } from './memory-view';
 
-/** Public DOM decoration and optional read-only shop projection; never native database stores. */
+/** Public DOM decoration; native database stores and four-table editing stay native. */
 export interface DatabaseThemeOptions {
   /** Directory containing the independent shiro-puppet-sheet.png. */
   assetBase: string;
   /** Optional self-contained PNG for the helper-script delivery; never arbitrary data: HTML/SVG. */
   embeddedPng?: string;
+  /** Standalone upright head + hands, independent of the six body poses. */
+  embeddedPeekPng?: string;
   enabled: boolean;
   onStatus?: (status: string) => void;
   /** Opens the shop's task page; no native database stores are accessed. */
-  onNavigate?: (tab: 'memory' | 'quests') => void;
-  /** Optional bounded read-only view of the shop's committed ledger. */
-  memorySource?: MemorySnapshotSource;
+  onNavigate?: (tab: 'quests') => void;
   /** Useful for an explicitly supplied host document and isolated DOM tests. */
   hostDocument?: Document;
 }
 
 export interface DatabaseThemeMount {
   setEnabled(enabled: boolean): void;
-  setNavigate(navigate?: (tab: 'memory' | 'quests') => void): void;
-  setMemorySource(source?: MemorySnapshotSource): void;
+  setNavigate(navigate?: (tab: 'quests') => void): void;
   getStatus(): string;
   dispose(): void;
 }
@@ -38,7 +36,8 @@ type OwnedDocument = Document & { [OWNER]?: DatabaseThemeMount };
 type Decoration = { root: Element; nodes: Set<HTMLElement> };
 
 /** Assets stay on the extension's host; an arbitrary URL cannot become a tracking image. */
-export function databaseThemeAsset(base: string, documentUrl: string): string {
+export function databaseThemeAsset(base: string, documentUrl: string, filename: 'shiro-puppet-sheet.png' | 'shiro-peek-head-hands.png' = 'shiro-puppet-sheet.png'): string {
+  if (!['shiro-puppet-sheet.png', 'shiro-peek-head-hands.png'].includes(filename)) throw new Error('白主题图片名称无效');
   const host = new URL(documentUrl);
   const directory = new URL(base, host);
   if (directory.username || directory.password || directory.search || directory.hash ||
@@ -47,7 +46,7 @@ export function databaseThemeAsset(base: string, documentUrl: string): string {
     throw new Error('白主题图片目录必须位于当前酒馆来源');
   }
   if (!directory.pathname.endsWith('/')) directory.pathname += '/';
-  return new URL('shiro-puppet-sheet.png', directory).href;
+  return new URL(filename, directory).href;
 }
 
 export function databaseThemeEmbeddedPng(value: string): string {
@@ -85,19 +84,19 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
   const win = doc.defaultView!;
   if (!win) throw new Error('数据库主题需要已挂载的文档');
   let enabled = Boolean(options.enabled), disposed = false, queued = false;
-  let status = '', imageUrl = '', assetError = '';
+  let status = '', imageUrl = '', peekImageUrl = '', assetError = '';
   let navigate = options.onNavigate;
-  let memorySource = options.memorySource;
-  try { imageUrl = options.embeddedPng === undefined ? databaseThemeAsset(options.assetBase, doc.baseURI) : databaseThemeEmbeddedPng(options.embeddedPng); }
+  try {
+    imageUrl = options.embeddedPng === undefined ? databaseThemeAsset(options.assetBase, doc.baseURI) : databaseThemeEmbeddedPng(options.embeddedPng);
+    peekImageUrl = options.embeddedPeekPng === undefined ? databaseThemeAsset(options.assetBase, doc.baseURI, 'shiro-peek-head-hands.png') : databaseThemeEmbeddedPng(options.embeddedPeekPng);
+  }
   catch (error) { assetError = error instanceof Error ? error.message : '图片目录无效'; }
   const decorated = new Map<Element, Decoration>();
   const companions = new Map<Element, PuppetCompanion>();
   const brandDisposers = new Map<HTMLElement, () => void>();
-  const memory = createMemoryView(doc);
-  memory.setSource(memorySource);
   const puppet = createPuppetPresentation(doc, imageUrl, quiet => {
     for (const { root } of decorated.values()) root.setAttribute('data-shiro-puppet-quiet', String(quiet));
-  });
+  }, peekImageUrl);
   const style = doc.createElement('style');
   style.dataset.shiroDatabaseStyle = VERSION;
   style.textContent = themeCss;
@@ -106,6 +105,20 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
   let noticesOpen = false;
   let dockedNoticeLayer: Element | null = null;
   const viewport = win.visualViewport;
+
+  function inputActive(): boolean {
+    let active = doc.activeElement;
+    while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+    return Boolean(active?.matches('textarea,select,input:not([type="button"]):not([type="submit"]):not([type="checkbox"]):not([type="radio"]),[contenteditable="true"]'));
+  }
+  function updateInput(): void {
+    if (disposed) return;
+    const editing = inputActive();
+    for (const root of decorated.keys()) root.toggleAttribute('data-shiro-input-active', editing);
+    for (const layer of companions.keys()) layer.toggleAttribute('data-shiro-input-active', editing);
+    updateViewport();
+  }
+  function focusOut(): void { queueMicrotask(() => { if (!disposed) updateInput(); }); }
 
   function clearNoticeDock(): void {
     if (dockedNoticeLayer?.getAttribute(NOTICE_DOCK_MARKER) === VERSION) dockedNoticeLayer.removeAttribute(NOTICE_DOCK_MARKER);
@@ -189,8 +202,7 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
     node.dataset.shiroDatabaseDecoration = 'shortcuts';
     node.setAttribute('role', 'group');
     node.setAttribute('aria-label', '蝴蝶效应账本入口');
-    const entries: ['memory' | 'quests', string][] = [];
-    if (memorySource) entries.push(['memory', '蝴蝶四表']);
+    const entries: ['quests', string][] = [];
     if (navigate) entries.push(['quests', '白的委托']);
     for (const [tab, label] of entries) {
       const button = doc.createElement('button');
@@ -200,8 +212,7 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
       button.textContent = label;
       button.addEventListener('click', () => {
         if (disposed || !enabled || !node.isConnected) return;
-        if (tab === 'memory') memory.open();
-        else navigate?.(tab);
+        navigate?.(tab);
       });
       node.append(button);
     }
@@ -222,6 +233,7 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
     for (const node of record.nodes) { brandDisposers.get(node)?.(); brandDisposers.delete(node); node.remove(); }
     if (record.root.getAttribute(MARKER) === VERSION) record.root.removeAttribute(MARKER);
     record.root.removeAttribute('data-shiro-puppet-quiet');
+    record.root.removeAttribute('data-shiro-input-active');
     decorated.delete(record.root);
   }
   function clearCompanion(layer: Element): void {
@@ -229,6 +241,7 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
     companions.get(layer)?.dispose();
     if (layer.getAttribute(COMPANION_MARKER) === VERSION) layer.removeAttribute(COMPANION_MARKER);
     layer.removeAttribute(NOTICE_MARKER);
+    layer.removeAttribute('data-shiro-input-active');
     companions.delete(layer);
   }
   function refreshCompanions(): void {
@@ -268,11 +281,6 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
     const portrait = [...record.nodes].find(item => item.dataset.shiroDatabaseDecoration === 'portrait' && item.parentElement === parent);
     parent.insertBefore(node, kind === 'masthead' ? anchor : kind === 'shortcuts' || kind === 'notices' ? (portrait?.nextSibling ?? parent.firstChild) : parent.firstChild);
   }
-  function ownMemory(record: Decoration, header: Element): void {
-    if (!header.parentElement || [...record.nodes].some(node => node.dataset.shiroDatabaseDecoration === 'memory' && node.parentElement === header.parentElement)) return;
-    const view = memory.attach(header);
-    record.nodes.add(view.node); brandDisposers.set(view.node, view.dispose);
-  }
   function clearShortcuts(): void {
     for (const record of decorated.values()) for (const node of [...record.nodes]) {
       if (node.dataset.shiroDatabaseDecoration !== 'shortcuts') continue;
@@ -307,17 +315,17 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
         if (!record) { record = { root, nodes: new Set() }; decorated.set(root, record); root.setAttribute(MARKER, VERSION); }
         const parents = new Set([...structure.headers.map(node => node.parentElement), ...structure.sidebars]);
         for (const node of [...record.nodes]) {
-          if (!node.isConnected || !parents.has(node.parentElement) || (!navigate && !memorySource && node.dataset.shiroDatabaseDecoration === 'shortcuts') || (!memorySource && node.dataset.shiroDatabaseDecoration === 'memory')) { brandDisposers.get(node)?.(); brandDisposers.delete(node); node.remove(); record.nodes.delete(node); }
+          if (!node.isConnected || !parents.has(node.parentElement) || (!navigate && node.dataset.shiroDatabaseDecoration === 'shortcuts')) { brandDisposers.get(node)?.(); brandDisposers.delete(node); node.remove(); record.nodes.delete(node); }
         }
-        for (const header of structure.headers) { own(record, header, 'masthead'); if (memorySource) ownMemory(record, header); }
+        for (const header of structure.headers) own(record, header, 'masthead');
         for (const sidebar of structure.sidebars) {
           own(record, sidebar, 'portrait');
           own(record, sidebar, 'notices');
-          if (navigate || memorySource) own(record, sidebar, 'shortcuts');
+          if (navigate) own(record, sidebar, 'shortcuts');
         }
       }
       refreshCompanions();
-      updateViewport();
+      updateInput();
       if (decorated.size) {
         if (!style.isConnected) (doc.head ?? doc.documentElement).appendChild(style);
         report('白 · 空白棋局主题已启用，数据库原有功能保留');
@@ -330,8 +338,6 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
   const observer = new win.MutationObserver(records => {
     const relevant = records.some(record => {
       const target = record.target as Element;
-      // Our bounded table renders do not represent upstream layout changes.
-      if (target.nodeType === 1 && target.closest?.('.shiro-db-memory')) return false;
       // Only upstream v-show ownership matters; pet dragging/input styles must not trigger layout scans.
       if (record.type === 'attributes' && record.attributeName === 'style') return target.matches(`${ROOT}, ${ROOT} > .acu-v2-app__shell, ${COMPANION} > .acu-desk-pet > .acu-desk-pet__peek > img.acu-desk-pet__peek-img`) ||
         (target.matches(`${COMPANION} > .acu-notice-bubble`) && target.parentElement?.getAttribute(COMPANION_MARKER) === VERSION);
@@ -350,7 +356,6 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
   const api: DatabaseThemeMount = {
     setEnabled(value) { if (!disposed) { enabled = Boolean(value); refresh(); } },
     setNavigate(value) { if (!disposed && navigate !== value) { navigate = value; clearShortcuts(); refresh(); } },
-    setMemorySource(value) { if (!disposed && memorySource !== value) { memorySource = value; memory.setSource(value); clearShortcuts(); refresh(); } },
     getStatus() { return status; },
     dispose() {
       if (disposed) return;
@@ -359,11 +364,13 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
       viewport?.removeEventListener('resize', updateViewport);
       viewport?.removeEventListener('scroll', updateViewport);
       win.removeEventListener('resize', updateViewport);
+      win.removeEventListener('orientationchange', updateViewport);
       win.removeEventListener('scroll', updateViewport);
+      doc.removeEventListener('focusin', updateInput);
+      doc.removeEventListener('focusout', focusOut);
       for (const record of [...decorated.values()]) clear(record);
       for (const layer of [...companions.keys()]) clearCompanion(layer);
       puppet.dispose();
-      memory.dispose();
       style.remove();
       layoutStyle.remove();
       if (doc[OWNER] === api) delete doc[OWNER];
@@ -373,7 +380,10 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
   viewport?.addEventListener('resize', updateViewport);
   viewport?.addEventListener('scroll', updateViewport);
   win.addEventListener('resize', updateViewport);
+  win.addEventListener('orientationchange', updateViewport);
   win.addEventListener('scroll', updateViewport);
+  doc.addEventListener('focusin', updateInput);
+  doc.addEventListener('focusout', focusOut);
   refresh();
   return api;
 }

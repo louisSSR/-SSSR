@@ -15,7 +15,7 @@
     {
       "id": "persistent-ledger",
       "owner": "provider",
-      "symbol": "indexedDB.open",
+      "symbol": "AutoCardUpdaterAPI.exportTableAsJson + executeSqlBatch",
       "required": true,
       "fallback": null
     },
@@ -55,13 +55,6 @@
       "fallback": "选择已配置的数据库API预设，否则仅浏览已有商品与账本。"
     },
     {
-      "id": "database-projection",
-      "owner": "provider",
-      "symbol": "AutoCardUpdaterAPI.applyChatBoundProjection",
-      "required": false,
-      "fallback": "原版数据库使用完整四表JSON独立导出导入；与新版主题组合时提供数据库内只读实时四表，不回退到未绑定聊天的CRUD。"
-    },
-    {
       "id": "database-generation",
       "owner": "provider",
       "symbol": "AutoCardUpdaterAPI.callAI",
@@ -88,6 +81,20 @@
       "symbol": "context.getTokenCountAsync",
       "required": false,
       "fallback": "UTF-8字节保守预算；仍超限则不发送评估请求。"
+    },
+    {
+      "id": "native-same-chat-readback",
+      "owner": "sillytavern",
+      "symbol": "authenticated /api/chats/get or /api/chats/group/get",
+      "required": true,
+      "fallback": null
+    },
+    {
+      "id": "same-origin-chat-lock",
+      "owner": "browser",
+      "symbol": "navigator.locks.request",
+      "required": true,
+      "fallback": null
     }
   ]
 }

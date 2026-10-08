@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { EventEmitter } from 'node:events';
+import { nativeControllerHarness } from './native-controller-fixture.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
@@ -29,42 +29,7 @@ function deferred() { let resolve, reject; const promise = new Promise((a, b) =>
 const effect = (id = 'result-a') => ({ resultId: id, source: '玩家救起落水者', outcome: '落水者已脱离危险', evidence: '落水者已经安全获救', amount: '1', standardSpec: '一位普通人被实际救起并脱险', established: true, independent: true, kind: 'initial', world: '世界A' });
 const response = (effects = []) => JSON.stringify({ world: { name: '世界A', systems: ['普通生命'], evidence: '故事中确认的世界' }, quotes: [], effects, ripples: [] });
 const income = (id = 'r1') => ({ requestId: `earn:${id}`, resultId: id, world: '世界A', source: '实际行为', outcome: '明确成立的独立改变', evidence: '可查证的故事内容', amount: '10', standardSpec: '固定影响十点规格', established: true });
-function harness(saved = {}, options = {}) {
-  const events = new EventEmitter(), records = new Map(), uploads = [], downloads = [], prompts = [];
-  let chat = 'chat-A', handle = 'alice', generation = () => Promise.resolve(response()), gate, transactionStarted, readGate, readStarted;
-  let storyText = '落水者已经安全获救', stamp = 'story1', chatOpen = true;
-  const settings = new Map([[`shiro-butterfly-shop:settings:alice`, JSON.stringify({ accountId: 'wallet', provider: 'host', preset: '', autoWorld: false, autoSettle: false, worldNotes: '', syncChats: [], ...saved })]]);
-  records.set('wallet', options.ledger ?? core.credit(core.createLedger('wallet'), income()).ledger);
-  globalThis.location = { origin: 'https://example.test' };
-  globalThis.localStorage = { getItem: k => settings.get(k) ?? null, setItem: (k, value) => settings.set(k, value) };
-  globalThis.BroadcastChannel = class { postMessage() {} close() {} };
-  class FakeStore {
-    async list() { return structuredClone([...records.values()]); }
-    async read(id) { if(readGate){const waiting=readGate;readGate=undefined;readStarted.resolve();await waiting.promise;} return structuredClone(records.get(id)); }
-    async create(id, label) { const l = core.createLedger(id, label); records.set(id, l); return structuredClone(l); }
-    async transact(id, callback) {
-      transactionStarted?.resolve();
-      if (gate) { const wait = gate; gate = undefined; await wait.promise; }
-      const before = structuredClone(records.get(id)), output = callback(before), next = 'ledger' in output ? output.ledger : output;
-      core.assertLedgerContinuation(records.get(id), next); records.set(id, structuredClone(next)); return structuredClone(output);
-    }
-    async export(id) { return { format: 'shiro-butterfly-ledger', version: 1, exportedAt: new Date().toISOString(), scope: { origin: location.origin, handle: 'alice' }, ledger: await this.read(id) }; }
-    async close() {}
-  }
-  const hostContext = { eventSource: events, eventTypes: Object.fromEntries(['CHAT_CHANGED', 'MESSAGE_RECEIVED', 'MESSAGE_UPDATED', 'MESSAGE_SWIPED', 'MESSAGE_DELETED', 'GENERATION_AFTER_COMMANDS'].map(k => [k, k])), generateQuietPrompt: (...args) => generation(...args) };
-  // Deterministic fixture count only; not a claim about real model tokenization.
-  if (options.tokenizer !== null) hostContext.getTokenCountAsync = options.tokenizer ?? (async text => Math.ceil(new TextEncoder().encode(text).length / 3));
-  const host = {
-    MODULE_ID: 'shiro-butterfly-shop', context: () => hostContext, chatIdentity: () => chat, hasChat: () => chatOpen,
-    verifiedHandle: async () => options.verifyHandle ? options.verifyHandle() : handle,
-    storyContext: () => ({ text: storyText, evidence: storyText, stamp: `${chat}:${stamp}` }),
-    setLedgerPrompt: value => prompts.push({ chat, account: controller.state.settings.accountId, value }), download: (...args) => downloads.push(args), serverBackup: (...args) => uploads.push(args),
-  };
-  const database = { discoverDatabaseApi: () => null, callDatabaseAI: () => { throw new Error('unused'); }, enableButterflyTables: () => {}, syncButterflyLedger: () => {} };
-  const { createController } = load('controller.ts', { './core': core, './protocol': protocol, './storage': { LedgerStore: FakeStore }, './host': host, './database': database });
-  const controller = createController();
-  return { controller, records, downloads, prompts, settings, events, hostContext, setGeneration: fn => { generation = fn; }, setHandle: value => { handle = value; }, setStory: (text, id = 'changed') => { storyText = text; stamp = id; }, changeChat: value => { chat = value; events.emit('CHAT_CHANGED'); }, closeChat: () => { chatOpen = false; events.emit('CHAT_CHANGED'); }, holdTransaction() { gate = deferred(); transactionStarted = deferred(); return { entered: transactionStarted.promise, release: gate.resolve }; },holdRead(){readGate=deferred();readStarted=deferred();return {entered:readStarted.promise,release:readGate.resolve};} };
-}
+const harness = (saved = {}, options = {}) => nativeControllerHarness({ load, core, protocol, income, response }, saved, options);
 
 test('one evaluation shows every committed effect and retries show zero new income instead of the previous transaction', async () => {
   const h=harness();
@@ -153,7 +118,7 @@ function completeLedger(){
   ledger=journal.registerQuest(ledger,{id:'quest',world:'世界A',title:'寻找同伴',objective:'找到失踪者',reason:'连锁反应',sourceRippleId:'ripple'}).ledger;
   return journal.transitionQuest(ledger,{questId:'quest',status:'active'}).ledger;
 }
-test('complete native four-table export retains every business history row with stable IDs while AI summary remains bounded',()=>{
+test('legacy read-only full projection retains history rows while AI summary remains bounded',()=>{
   const ledger=completeLedger(),before=JSON.stringify(ledger),full=memoryDatabase.createCompleteMemoryTableExport(ledger);
   const sheets=Object.values(full).filter(v=>v?.uid);
   assert.equal(sheets.length,4);assert.equal(sheets[0].content.length,46);
@@ -199,18 +164,18 @@ test('paged snapshot defaults to at most 50 rows per table and searches all hist
   assert.throws(()=>memoryDatabase.readCompleteMemoryPages(ledger,{offsets:{impressions:-1}}),/非负/);
 });
 
-test('a paged snapshot waiting on storage cannot return the previous account or chat after selection changes',async()=>{
+test('a paged snapshot waiting on native storage cannot return the previous chat account after a chat change',async()=>{
   const h=harness();
   try{
     await h.controller.start();await pause();
-    h.records.set('other',core.createLedger('other'));
+    h.setChatLedger('chat-B',core.createLedger('other'));
     const notices=[];h.controller.subscribeMemorySnapshots(n=>notices.push(n));
     const held=h.holdRead(),pending=h.controller.readMemorySnapshot();await held.entered;
-    await h.controller.selectAccount('other');held.release();await assert.rejects(pending,/切换/);
+    h.changeChat('chat-B');held.release();await assert.rejects(pending,/切换/);await pause();await pause();
     assert.ok(notices.includes(null));assert.equal((await h.controller.readMemorySnapshot()).scope.account,'other');
     const heldChat=h.holdRead(),chatRead=h.controller.readMemorySnapshot();await heldChat.entered;
-    h.changeChat('chat-B');heldChat.release();await assert.rejects(chatRead,/切换/);
-    const current=await h.controller.readMemorySnapshot();assert.equal(current.scope.chat,'chat-B');assert.equal(current.scope.account,'other');
+    h.changeChat('chat-A');heldChat.release();await assert.rejects(chatRead,/切换/);await pause();await pause();
+    const current=await h.controller.readMemorySnapshot();assert.equal(current.scope.chat,'chat-A');assert.equal(current.scope.account,'wallet');
   }finally{await h.controller.dispose();}
 });
 
@@ -225,12 +190,12 @@ test('purchase, use and transfer each publish the committed revision and appear 
     const bought=h.records.get('wallet').inventory[0];
     await h.controller.inventoryAction(bought.id,'use',1);assert.equal(h.controller.state.error,'');assert.equal(notices.at(-1).revision,h.records.get('wallet').revision);
     await h.controller.inventoryAction(bought.id,'transfer',1,'同伴');assert.equal(h.controller.state.error,'');assert.equal(notices.at(-1).revision,h.records.get('wallet').revision);
-    assert.equal(notices.length,3);assert.equal(modelCalls,0);
+    assert.equal(new Set(notices.filter(n=>n&&n.revision>ledger.revision).map(n=>n.revision)).size,3);assert.equal(modelCalls,0);
     const page=(await h.controller.readMemorySnapshot()).tables.find(t=>t.key==='inventory');assert.equal(page.total,4);assert.match(page.rows[0][1],/持有 0 · 已用 1 · 已转 1/);
     await h.controller.exportCompleteMemory();const full=JSON.parse(h.downloads.at(-1)[1]);
-    const records=full.sheet_shiro_memory_3.content.slice(1).map(row=>JSON.parse(row[4]));
-    assert.equal(records[0].remaining,0);assert.equal(records[0].consumed,1);assert.equal(records[0].transferred,1);
-    assert.deepEqual(records.slice(1).map(tx=>tx.kind),['purchase','use','transfer']);assert.equal(records.at(-1).recipient,'同伴');
+    const native=load('native-schema.ts').readNativeSnapshot(full,{origin:location.origin,handle:'alice',chat:'chat-A'}).ledger;
+    assert.equal(native.inventory[0].remaining,0);assert.equal(native.inventory[0].consumed,1);assert.equal(native.inventory[0].transferred,1);
+    assert.deepEqual(native.transactions.filter(tx=>tx.kind!=='credit').map(tx=>tx.kind),['purchase','use','transfer']);assert.equal(native.transactions.at(-1).recipient,'同伴');
   }finally{await h.controller.dispose();}
 });
 

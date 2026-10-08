@@ -151,7 +151,7 @@ test('evaluation context has a strict JSON byte limit, keeps exact selected spec
     assert.equal(result.summary.balance, ledger.balance);
     assert.equal(result.summary.income, ledger.income);
     assert.equal(result.summary.spend, ledger.spend);
-    assert.match(result.summary.note, /所有ID仍完整保存在本地/);
+    assert.match(result.summary.note, /所有ID仍完整保存在原生四表/);
     assert.match(result.summary.note, /模型不得自行加扣点；购买必须由插件实际交易成功/);
     assert.doesNotMatch(JSON.stringify(result), /"receipt":|"key":|"raw":/);
     for (const quote of result.selected.quotes) assert.deepEqual(quote.spec, ledger.quotes.find(item => item.id === quote.id).spec);

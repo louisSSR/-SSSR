@@ -24,6 +24,21 @@
   box-shadow: 0 3px 12px #33224920;
 }
 .launcher.is-dragging { cursor: grabbing; transition: none; }
+.launcher.is-tucked { background: transparent; border-color: transparent; box-shadow: none; overflow: hidden; }
+.launcher.is-tucked .launcher-chibi { transform: translateX(var(--shiro-launcher-peek-shift)); }
+.launcher.is-tucked[data-dock-edge="left"] { --shiro-launcher-peek-shift: -22px; }
+.launcher.is-tucked[data-dock-edge="right"] { --shiro-launcher-peek-shift: 22px; }
+.launcher.is-tucked > i { display: none; }
+:host([data-shiro-input-active]) .launcher { visibility: hidden; pointer-events: none; }
+:host([data-shiro-input-active]) :is(.rail-chibi, .hero .shiro, .hero-chess, .quest-hero img, .welcome img) { display: none; }
+.launcher .launcher-chibi { transition: transform .16s ease-out; }
+.window, .body, .content { min-width: 0; min-height: 0; }
+.table-scroll { overflow: auto; max-width: 100%; overscroll-behavior: contain; }
+.modal { min-width: 0; min-height: 0; max-height: 100%; overscroll-behavior: contain; }
+@media (min-width: 521px) {
+  .veil { padding: max(10px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { .launcher .launcher-chibi { transition: none; } }
 .launcher .launcher-chibi {
   position: static;
   width: 44px;

@@ -57,6 +57,11 @@ test('credit retries and duplicate actual result IDs never mint twice', () => {
   rejectsCode(() => c.credit(result.ledger, event('r1', '11')), 'IDEMPOTENCY_CONFLICT');
   rejectsCode(() => c.credit(result.ledger, event('r1', '11', { requestId: 'new-request' })), 'RESULT_CONFLICT');
 });
+test('same credit request requires identical world/source/outcome/evidence and causal input; exact replay stays idempotent', () => {
+  const input = event(), before = c.credit(fresh(), input).ledger;
+  for (const changed of [{ world: '另一世界' }, { source: '另一行为' }, { outcome: '另一实际结果' }, { evidence: '另一证据' }, { independent: false }, { kind: 'deepening' }, { parentResultId: 'invented-parent' }, { established: false }, { at: '2026-10-06T00:00:01.000Z' }]) rejectsCode(() => c.credit(before, { ...input, ...changed }), 'IDEMPOTENCY_CONFLICT');
+  const retry = c.credit(before, { ...input }); assert.equal(retry.duplicate, true); assert.equal(retry.ledger.revision, before.revision); assert.deepEqual(retry.ledger, before);
+});
 test('identical established fact cannot mint again under another model-chosen ID or reprice itself', () => {
   const first = event(), l = c.credit(fresh(), first).ledger;
   const second = { ...first, requestId: 'earn:another-id', resultId: 'another-id' };

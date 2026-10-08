@@ -12,14 +12,11 @@ const css = readFileSync(new URL('../src/database-theme.css', import.meta.url), 
 const puppetOutput = ts.transpileModule(readFileSync(new URL('../src/puppet.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
 const puppetModule = { exports: {} };
 new Function('require', 'module', 'exports', puppetOutput)(require, puppetModule, puppetModule.exports);
-const memoryOutput = ts.transpileModule(readFileSync(new URL('../src/memory-view.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
-const memoryModule = { exports: {} };
-new Function('require', 'module', 'exports', memoryOutput)(require, memoryModule, memoryModule.exports);
 const output = ts.transpileModule(readFileSync(new URL('../src/database-theme.ts', import.meta.url), 'utf8'), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
 }).outputText;
 const module = { exports: {} };
-new Function('require', 'module', 'exports', output)(name => name === './database-theme.css' ? { __esModule: true, default: css } : name === './puppet' ? puppetModule.exports : name === './memory-view' ? memoryModule.exports : require(name), module, module.exports);
+new Function('require', 'module', 'exports', output)(name => name === './database-theme.css' ? { __esModule: true, default: css } : name === './puppet' ? puppetModule.exports : require(name), module, module.exports);
 const { databaseThemeAsset, mountDatabaseTheme } = module.exports;
 const marker = '[data-shiro-database-theme]';
 const native = `<div class="acu-v2-app"><div class="acu-v2-app__shell"><div class="acu-v2-app__body"><nav class="acu-v2-sidebar"><div class="acu-v2-sidebar__brand"><button class="acu-v2-sidebar__brand-title">奶数据库</button></div><button class="acu-v2-sidebar__item">工作台</button></nav><div class="acu-v2-app__content"><header class="acu-v2-app__header"><div class="acu-v2-app__header-left"><h1>填表工作台</h1></div><div class="acu-v2-app__header-right"><button>关闭新 UI</button></div></header><main class="acu-v2-main"><textarea>原始数据</textarea></main></div></div></div></div>`;
@@ -36,6 +33,8 @@ function fixture(html = native) {
 
 test('asset resolver is local and treats the configured base as a directory', () => {
   assert.equal(databaseThemeAsset('/extensions/shiro/assets', 'https://example.test/'), 'https://example.test/extensions/shiro/assets/shiro-puppet-sheet.png');
+  assert.equal(databaseThemeAsset('/extensions/shiro/assets', 'https://example.test/', 'shiro-peek-head-hands.png'), 'https://example.test/extensions/shiro/assets/shiro-peek-head-hands.png');
+  assert.throws(() => databaseThemeAsset('/extensions/shiro/assets', 'https://example.test/', 'https://tracker.test/peek.png'));
   for (const base of ['https://tracker.test/a', 'data:text/plain,bad', 'javascript:void(0)', 'https://user:pass@example.test/a', '/a?secret=1', '/a#fragment']) {
     assert.throws(() => databaseThemeAsset(base, 'https://example.test/'));
   }
@@ -195,20 +194,25 @@ test('quiet pauses owned native breathing and peek ancestors in place, resumes t
   f.mount.dispose(); f.dom.window.close();
 });
 
-test('database-local four tables occupy flow after the native header, retain original inputs/saves and unsubscribe on theme off/remount', async () => {
-  const f = fixture(), listeners = new Set(); let reads = 0, stops = 0, navigations = 0;
-  const source = { async readMemorySnapshot() { reads++; return { version: 1, scope: { origin: 'http://localhost:8000', handle: 'user', account: 'account', chat: 'chat' }, revision: 3, updatedAt: '2026-10-08T08:00:00Z', tables: ['impressions', 'accounts', 'inventory', 'ripples'].map(key => ({ key, title: key, columns: ['内容'], rows: [[`真实${key}`]], recordIds: [key], total: 1, offset: 0, limit: 50 })) }; }, subscribeMemorySnapshots(listener) { listeners.add(listener); return () => { stops++; listeners.delete(listener); }; }, async exportCompleteMemory() {} };
-  const input = f.doc.querySelector('textarea'), nativeHeader = f.doc.querySelector('.acu-v2-app__header');
-  f.mount.setMemorySource(source); f.mount.setNavigate(() => navigations++);
-  assert.equal(nativeHeader.nextElementSibling.className, 'shiro-db-memory'); assert.equal(f.doc.querySelector('.shiro-db-memory').nextElementSibling.className, 'acu-v2-main'); assert.equal(listeners.size, 1);
-  f.doc.querySelector('[data-shiro-tab="memory"]').click(); await flush(); assert.equal(navigations, 0); assert.equal(reads, 1); assert.match(f.doc.querySelector('.shiro-db-memory tbody').textContent, /真实impressions/);
+test('native four-table surface stays in normal flow without a private snapshot drawer or duplicate memory entry', async () => {
+  const f = fixture(), input = f.doc.querySelector('textarea'), nativeHeader = f.doc.querySelector('.acu-v2-app__header');
+  f.mount.setNavigate(() => {});
+  assert.equal(f.mount.setMemorySource, undefined);
+  assert.equal(nativeHeader.nextElementSibling.className, 'acu-v2-main');
+  assert.equal(f.doc.querySelector('.shiro-db-memory,[data-shiro-tab="memory"]'), null);
   assert.equal(f.doc.querySelector('textarea'), input); assert.equal(input.value, '原始数据');
-  f.mount.setEnabled(false); assert.equal(listeners.size, 0); assert.equal(stops, 1); assert.equal(f.doc.documentElement.outerHTML, f.before);
-  f.mount.setEnabled(true); assert.equal(listeners.size, 1); assert.equal(f.doc.querySelector('.shiro-db-memory-body').hidden, true);
   f.doc.querySelector('.acu-v2-sidebar').remove(); f.doc.querySelector('.acu-v2-app__content').innerHTML = visualizer; await flush();
-  assert.equal(listeners.size, 1); assert.equal(f.doc.querySelectorAll('.shiro-db-memory').length, 1); assert.ok(f.doc.querySelector('.acu-visualizer-surface__topbar + .shiro-db-memory')); assert.equal(f.doc.querySelector('textarea').value, '保留表格');
-  f.mount.setMemorySource(undefined); assert.equal(listeners.size, 0); assert.equal(f.doc.querySelector('.shiro-db-memory'), null); assert.equal(f.doc.querySelector('[data-shiro-tab="memory"]'), null); assert.ok(f.doc.querySelector('[data-shiro-tab="quests"]'));
+  assert.equal(f.doc.querySelector('.shiro-db-memory,[data-shiro-tab="memory"]'), null); assert.equal(f.doc.querySelector('textarea').value, '保留表格');
   f.mount.dispose(); f.dom.window.close();
+});
+
+test('focused editing hides only owned decorative surfaces and restores them after focus leaves; shutdown removes focus ownership', async () => {
+  const f = fixture(), input = f.doc.querySelector('textarea'), layer = f.doc.createElement('div'); layer.className = 'acu-desk-pet-layer';
+  layer.innerHTML = '<div class="acu-desk-pet"><div class="acu-desk-pet__body"><div class="acu-desk-pet__flip"><img class="acu-desk-pet__img" src="/native.png"></div></div></div>';
+  f.doc.body.append(layer); await flush(); input.focus();
+  assert.equal(f.doc.querySelector('.acu-v2-app').hasAttribute('data-shiro-input-active'), true); assert.equal(layer.hasAttribute('data-shiro-input-active'), true);
+  input.blur(); await flush(); assert.equal(layer.hasAttribute('data-shiro-input-active'), false);
+  f.mount.dispose(); input.focus(); assert.equal(layer.hasAttribute('data-shiro-input-active'), false); f.dom.window.close();
 });
 
 test('every CSS rule is scoped; only named puppet motion is added and respects reduced motion', () => {

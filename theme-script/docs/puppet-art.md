@@ -8,6 +8,18 @@
 
 六格顺序为待机、眨眼、得意吐槽、被戳惊讶、被拎起、缩边探头。主题通过 CSS 取格，未用程序重画、裁切或拼接原插画。
 
+1.3.0 保留整张六态图集及其六个完整身像；展开态和侧栏继续使用它。收起态新增 `assets/shiro-peek-head-hands.png`，只包含正向头部、头发和双手，四边都保持 upright，不把完整人物横转成探头。运行时读取原生尺寸，向屏幕内展开，保留 4px 探头运动余量；完整身像外框 inset 4px。原生持久拖动坐标含义不变。
+
+新探头于 2026-10-08 使用内置 `image_gen`，以当前六态 PNG 作为人物与画风参考生成独立单张。输出为 1312×1199 RGBA，1,151,610 bytes；alpha 范围 0..255，非透明区域边界 `[55,19,1252,1124]`。SHA256：`d258cf48e77a003fe3a59a77ce88c85695ba9ddd05d0ffd904e96fe5b0d3de55`。工具生成的 PNG 原样复制进项目，未经程序裁切、重画或图片编辑；原六态 PNG 没有更改。两张素材均由现有 webpack PNG inline 规则内嵌，收起探头不是整张图集缩放。
+
+### 独立探头生成提示词
+
+```text
+Use case: identity-preserve. Reference image is ONLY a character/style reference, a six-pose sheet; do not reproduce the sheet. Create ONE standalone upright front-facing Shiro puppet peek sprite: only her head, flowing pastel white/lavender hair with cyan and pink tips, orange-red eyes, and two small hands gripping an invisible lower ledge at either side of her cheeks. Same character and pastel outlined chibi puppet style as reference, inspired by early BanG Dream girl-band anime art. No full body, no torso below hands, no legs, no tilted or sideways head, no props, no text. Single subject centered, compact head plus two hands silhouette, generous small transparent margin. Actual transparent PNG background.
+```
+
+工具与透明度检查只证明生成来源和资产格式。造型是否符合用户期望仍由用户目测确认；手机独立夹具与旧版本真实宿主验收都不能代替 1.3.0 的新构建和真实宿主复验。
+
 ## 生成提示词
 
 采用内置 image_gen 编辑模式，没有 CLI/API 回退。最终两轮提示词的主要约束：

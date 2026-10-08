@@ -9,6 +9,7 @@ let JSDOM;
 try { ({ JSDOM } = require('jsdom')); }
 catch { ({ JSDOM } = createRequire(new URL('../../../artifacts/shiro-butterfly-shop-20261006/patched-shujuku/package.json', import.meta.url))('jsdom')); }
 const png = 'data:image/png;base64,' + readFileSync(new URL('../assets/shiro-puppet-sheet.png', import.meta.url)).toString('base64');
+const peekPng = 'data:image/png;base64,' + readFileSync(new URL('../assets/shiro-peek-head-hands.png', import.meta.url)).toString('base64');
 const native = '<div class="acu-v2-app"><div class="acu-v2-app__shell"><div class="acu-v2-app__body"><nav class="acu-v2-sidebar"></nav><div class="acu-v2-app__content"><header class="acu-v2-app__header"><div class="acu-v2-app__header-left"></div><div class="acu-v2-app__header-right"><button id="save">保存</button></div></header></div></div></div></div>';
 const ownerKey = Symbol.for('shiro-database-theme:helper-script-owner'), themeKey = Symbol.for('shiro-database-theme:appearance-v1'), shopKey = Symbol.for('shiro-butterfly-shop:ui-v1');
 function compile(file, imports = {}, extra = {}) {
@@ -18,8 +19,7 @@ function compile(file, imports = {}, extra = {}) {
   return mod.exports;
 }
 const puppet = compile('puppet');
-const memoryView = compile('memory-view');
-const renderer = compile('database-theme', { './puppet': puppet, './memory-view': memoryView, './database-theme.css': { __esModule: true, default: readFileSync(new URL('../src/database-theme.css', import.meta.url), 'utf8') } });
+const renderer = compile('database-theme', { './puppet': puppet, './database-theme.css': { __esModule: true, default: readFileSync(new URL('../src/database-theme.css', import.meta.url), 'utf8') } });
 const { startThemeScript } = compile('runtime', { './database-theme': renderer });
 function fixture() {
   const dom = new JSDOM(`<!doctype html><html><head></head><body><div id="extensions_settings2"></div>${native}</body></html>`, { url: 'http://localhost:18006/' });
@@ -28,7 +28,7 @@ function fixture() {
   function script() {
     const iframe = doc.createElement('iframe'); doc.body.append(iframe);
     const frame = iframe.contentWindow, buttons = new Map();
-    const owner = startThemeScript(frame, png, (name, handler) => { buttons.set(name, handler); return { stop: () => buttons.delete(name) }; });
+    const owner = startThemeScript(frame, png, (name, handler) => { buttons.set(name, handler); return { stop: () => buttons.delete(name) }; }, peekPng);
     return { iframe, frame, buttons, owner };
   }
   return { dom, host, doc, messages, script };
@@ -73,20 +73,19 @@ test('optional shop links discover both load orders and disappear on shop disabl
   }
 });
 
-test('optional committed four-table service discovers both load orders, stays inside database, and clears on service disable/pagehide', async () => {
+test('a legacy private four-table snapshot service is never subscribed or mounted by the theme', async () => {
   for (const first of [true, false]) {
     const f = fixture(), calls = [], listeners = new Set(); let stops = 0;
     const shop = { version: 1, open: tab => calls.push(tab), async readMemorySnapshot() { return { version: 1, scope: { origin: 'http://localhost:18006', handle: 'user', chat: 'chat', account: 'account' }, revision: 12, updatedAt: '2026-10-08T08:00:00Z', tables: ['impressions', 'accounts', 'inventory', 'ripples'].map(key => ({ key, title: key, columns: ['内容'], rows: [[`实际${key}`]], recordIds: [key], total: 1, offset: 0, limit: 50 })) }; }, subscribeMemorySnapshots(listener) { listeners.add(listener); return () => { stops++; listeners.delete(listener); }; }, async exportCompleteMemory() {} };
     if (first) f.host[shopKey] = shop;
     const s = f.script();
     if (!first) { assert.equal(f.doc.querySelector('.shiro-db-memory'), null); f.host[shopKey] = shop; f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability')); }
-    assert.equal(listeners.size, 1); f.doc.querySelector('[data-shiro-tab="memory"]').click(); await new Promise(resolve => setImmediate(resolve));
-    assert.match(f.doc.querySelector('.shiro-db-memory tbody').textContent, /实际impressions/); assert.deepEqual(calls, []);
+    assert.equal(listeners.size, 0); assert.equal(f.doc.querySelector('.shiro-db-memory,[data-shiro-tab="memory"]'), null); assert.deepEqual(calls, []);
     f.doc.querySelector('[data-shiro-tab="quests"]').click(); assert.deepEqual(calls, ['quests']);
-    f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability')); assert.equal(listeners.size, 1, 'same service availability cannot create a duplicate subscription');
-    delete f.host[shopKey]; f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability')); assert.equal(listeners.size, 0); assert.equal(stops, 1); assert.equal(f.doc.querySelector('.shiro-db-memory'), null); assert.equal(f.doc.querySelector('[data-shiro-tab="memory"]'), null);
-    f.host[shopKey] = shop; f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability')); assert.equal(listeners.size, 1);
-    s.frame.dispatchEvent(new s.frame.Event('pagehide')); assert.equal(listeners.size, 0); assert.equal(stops, 2); assert.equal(f.doc.querySelector('.shiro-db-memory'), null); f.dom.window.close();
+    f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability')); assert.equal(listeners.size, 0);
+    delete f.host[shopKey]; f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability')); assert.equal(stops, 0);
+    f.host[shopKey] = shop; f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability')); assert.equal(listeners.size, 0);
+    s.frame.dispatchEvent(new s.frame.Event('pagehide')); assert.equal(stops, 0); assert.equal(f.doc.querySelector('.shiro-db-memory'), null); f.dom.window.close();
   }
 });
 
@@ -141,7 +140,7 @@ test('pending jQuery ready does not resurrect a script stopped before initializa
   const f = fixture(), iframe = f.doc.createElement('iframe'); f.doc.body.append(iframe); const frame = iframe.contentWindow;
   let ready, started = 0, listenerFactory;
   const removes = [], stops = [];
-  const imports = { '../assets/shiro-puppet-sheet.png': { default: png }, './runtime': { startThemeScript: (_frame, _png, listen) => { started++; listenerFactory = listen; } } };
+  const imports = { '../assets/shiro-puppet-sheet.png': { __esModule: true, default: png }, '../assets/shiro-peek-head-hands.png': { __esModule: true, default: peekPng }, './runtime': { startThemeScript: (_frame, _png, listen, peek) => { assert.equal(typeof peek, 'string'); assert.equal(createHash('sha256').update(peek).digest('hex'), createHash('sha256').update(peekPng).digest('hex')); started++; listenerFactory = listen; } } };
   const extra = { window: frame, $: fn => { ready = fn; }, getButtonEvent: name => name, eventOn: () => ({ stop: () => stops.push(true) }), eventRemoveListener: (name, handler) => removes.push([name, handler]) };
   compile('index', imports, extra); frame.dispatchEvent(new frame.Event('pagehide')); ready(); assert.equal(started, 0);
   compile('index', imports, extra); ready(); assert.equal(started, 1);
@@ -149,12 +148,12 @@ test('pending jQuery ready does not resurrect a script stopped before initializa
   f.dom.window.close();
 });
 
-test('delivery is one importable script, bundled JavaScript parses, image is self-contained and manifest hash matches', () => {
+test('delivery is one importable script, bundled JavaScript parses, image is self-contained and manifest hash matches', { skip: process.env.SHIRO_SOURCE_ONLY === '1' }, () => {
   const path = new URL('../dist/shiro-database-theme.script.json', import.meta.url), bytes = readFileSync(path), data = JSON.parse(bytes);
   assert.equal(data.type, 'script'); assert.equal(Array.isArray(data), false);
   assert.deepEqual(data.button.buttons.map(x => x.name), ['切换白主题', '主题状态']);
   assert.deepEqual(data.data, {}); assert.equal(data.export_with.data, false);
-  new vm.Script(data.content); assert.ok(data.content.includes(png));
+  new vm.Script(data.content); assert.ok(data.content.includes(png)); assert.ok(data.content.includes(peekPng), 'the new standalone peek must be embedded in the current artifact');
   assert.doesNotMatch(data.content, /\bfetch\s*\(|\bimport\s*\(|https:\/\/cdn|XMLHttpRequest/);
   const manifest = JSON.parse(readFileSync(new URL('../dist/component-update-manifest.json', import.meta.url)));
   assert.equal(manifest.deliveryMode, 'component'); assert.equal(manifest.artifacts.length, 1);

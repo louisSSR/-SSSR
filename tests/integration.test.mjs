@@ -1,10 +1,11 @@
-// Portable business regressions extracted from the existing workspace integration suite.
-// Native database source and browser IndexedDB probes remain separate, explicitly scoped evidence.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { nativeControllerHarness } from './native-controller-fixture.mjs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 const require = createRequire(import.meta.url), ts = require('typescript');
 const root = new URL('../', import.meta.url);
 const moduleCache = new Map();
@@ -193,7 +194,99 @@ test('protocol keeps task-only API responses from mutating story facts and rejec
   assert.equal(Object.hasOwn(parsed.quests[0], 'at'), false); assert.equal(Object.hasOwn(parsed.quests[0], 'status'), false);
 });
 
-test('switching chats never publishes the old account balance under the new chat account', async () => {
+function nativeValidators() {
+  const upstream = fileURLToPath(new URL('../../../artifacts/shiro-butterfly-shop-20261006/reference/shujuku/', import.meta.url));
+  const head = execFileSync('git', ['-c', `safe.directory=${upstream.replaceAll('\\', '/')}`, '-C', upstream, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  assert.equal(head, '1a5ffdb3ef8817452c370c6cfef7cac86683d7cc');
+  const cache = new Map();
+  function source(file) {
+    if (cache.has(file)) return cache.get(file).exports;
+    const code = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText;
+    const module = { exports: {} }; cache.set(file, module);
+    new Function('require', 'module', 'exports', code)(name => {
+      if (name === 'pinyin-pro') return require(path.join(upstream, '../validation-deps/package/dist/index.js'));
+      if (!name.startsWith('.')) throw new Error(`Unexpected validator dependency ${name}`);
+      const base = path.resolve(path.dirname(file), name), resolved = [base, `${base}.ts`, `${base}.js`, path.join(base, 'index.ts')].find(p => existsSync(p) && statSync(p).isFile());
+      if (resolved === path.join(upstream, 'src/shared/utils.ts')) return { logDebug_ACU() {}, logWarn_ACU() {}, logError_ACU() {} };
+      if (!resolved) throw new Error(`Validator dependency missing ${name}`);
+      return source(resolved);
+    }, module, module.exports); return module.exports;
+  }
+  function fixtureModule(relative, dependencies) {
+    const code = ts.transpileModule(readFileSync(path.join(upstream, relative), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+    const module = { exports: {} };
+    new Function('require', 'module', 'exports', code)(name => {
+      if (name in dependencies) return dependencies[name];
+      // Unused imports are inert; any accidental use fails visibly in this fixture.
+      return new Proxy({}, { get(_target, key) { throw new Error(`Unexpected native fixture call ${name}.${String(key)}`); } });
+    }, module, module.exports); return module.exports;
+  }
+  return { validator: source(path.join(upstream, 'src/service/template/template-import-validator.ts')), ddl: source(path.join(upstream, 'src/shared/ddl-utils.ts')), fixtureModule };
+}
+test('four native memory tables pass pinned upstream validator/DDL and disable duplicate AI exports', async () => {
+  const h = harness({}, { ledger: archive() });
+  try {
+    await h.controller.start(); await pause(); await h.controller.exportMemory(); assert.equal(h.controller.state.error, '');
+    const [name, text] = h.downloads.at(-1), wire = JSON.parse(text); assert.match(name, /四表/);
+    assert.deepEqual(wire, memoryDatabase.createMemoryTableExport(h.controller.state.memory, 'wallet'));
+    const sheets = Object.entries(wire).filter(([key]) => key.startsWith('sheet_')); assert.equal(sheets.length, 4);
+    const { validator, ddl } = nativeValidators(); assert.deepEqual(validator.validateImportedTemplateObject_ACU(wire), []);
+    for (const [key, sheet] of sheets) {
+      assert.equal(sheet.uid, key); assert.equal(sheet.exportConfig.enabled, false); assert.equal(sheet.exportConfig.injectIntoWorldbook, false);
+      assert.equal(sheet.updateConfig.updateFrequency, 0, 'read-only memory snapshots do not participate in native automatic fill');
+      const check = ddl.validateDDLTextAgainstHeaders_ACU(sheet.sourceData.ddl, sheet.content[0]); assert.equal(check.valid, true, JSON.stringify(check));
+      for (const row of sheet.content.slice(1)) { assert.equal(row.length, sheet.content[0].length); assert.equal(row[2], 'wallet'); }
+      assert.equal(new Set(sheet.content.slice(1).map(r => r[1])).size, sheet.content.length - 1);
+    }
+    assert.equal(h.records.get('wallet').impressions.length, 40);
+  } finally { await h.controller.dispose(); }
+});
+
+test('native scheduler excludes zero-frequency snapshots; export flags alone cannot exclude native fill prompts', async () => {
+  const wire = memoryDatabase.createMemoryTableExport(memory.buildMemory(archive(4), { budget: 4000 }), 'wallet');
+  const { ddl, fixtureModule } = nativeValidators(), logs = { logDebug_ACU() {}, logWarn_ACU() {}, logError_ACU() {}, isSummaryOrOutlineTable_ACU: () => false };
+  const sorted = data => Object.keys(data).filter(k => k.startsWith('sheet_'));
+  const scheduler = fixtureModule('src/service/table/update-scheduler.ts', {
+    '../../shared/utils': logs,
+    '../../shared/runtime-performance': { startRuntimePerformanceSpan_ACU: () => ({ end() {} }) },
+    '../template/chat-scope': { getSortedSheetKeys_ACU: sorted },
+    './table-history': { resolveTableHistoryStatesFromChat_ACU: () => new Map(), getLatestV2FullCheckpointMessageIndex_ACU: () => -1 },
+  });
+  const chat = [{ is_user: false, mes: 'isolated scheduler fixture' }], settings = { autoUpdateThreshold: 3, autoUpdateFrequency: 1, skipUpdateFloors: 0, updateBatchSize: 3 };
+  assert.equal(scheduler.buildAutoUpdatePlan_ACU(chat, wire, settings, 'qa').tablesToUpdate.length, 0);
+  const inherited = structuredClone(wire);
+  for (const key of sorted(inherited)) inherited[key].updateConfig.updateFrequency = -1;
+  assert.equal(scheduler.buildAutoUpdatePlan_ACU(chat, inherited, settings, 'qa').tablesToUpdate.length, 4, 'worldbook export=false alone did not disable native fill');
+  const normal = structuredClone(wire.sheet_shiro_memory_1); normal.uid = 'sheet_normal'; normal.name = '其他业务表'; normal.updateConfig.updateFrequency = 1;
+  const mixed = { ...wire, sheet_normal: normal };
+  const plan = scheduler.buildAutoUpdatePlan_ACU(chat, mixed, settings, 'qa');
+  assert.deepEqual(plan.tablesToUpdate.map(t => t.sheetKey), ['sheet_normal']); assert.deepEqual(Object.values(plan.updateGroups).flatMap(g => g.sheetKeys), ['sheet_normal']);
+  // The real scheduler emits these exact target keys; real prepare code filters by them.
+  const prepare = fixtureModule('src/service/ai/prompt-builder/prompt-prepare.ts', {
+    '../../runtime/state-manager': { settings_ACU: {}, manualExtraHint_ACU: '' },
+    '../../template/chat-scope': { ensureChatSheetGuideSeeded_ACU: async () => null, attachSeedRowsToCurrentDataFromGuide_ACU() {}, getEffectiveSeedRowsForSheet_ACU: () => [], getSortedSheetKeys_ACU: sorted, filterSheetKeysByTemplateScope_ACU: keys => keys, projectSheetForTemplateScope_ACU: table => table, resolveTemplateScope_ACU: () => null },
+    '../../worldbook/pipeline': { getCombinedWorldbookContent_ACU: async () => '' },
+    '../../worldbook/worldbook-placeholder-classification': { isDatabaseGeneratedLorebookEntry_ACU: () => false },
+    '../../worldbook/read-context': { createLorebookReadContext_ACU: () => ({}) },
+    '../../worldbook/read-scope': { buildTableCandidateScope_ACU: () => [], collectAsyncTableCandidateScope_ACU: async () => [], resolveLorebookReadTargets_ACU: async () => [] },
+    '../../settings/settings-readers': { getCurrentWorldbookConfig_ACU: () => ({}) },
+    '../../agent/agent-worldbook-takeover': { resolvePreTakeoverWorldbookSnapshot_ACU: async () => ({}) },
+    '../../../shared/utils': logs,
+    '../../table/storage-mode': { isSqliteMode: () => false },
+    '../../../shared/ddl-utils': ddl,
+    '../../flight-mode/flight-mode-state': { getCurrentFlightModeState_ACU: () => ({ enabled: false, hiddenRowIds: [] }) },
+    '../../fill-mode/fill-mode-preferences': { getClassicRecentChronicleRows_ACU: () => 10, resolveSheetSourceDataPlaceholders_ACU: table => table },
+  });
+  const filtered = await prepare.prepareAIInput_ACU([], 'auto_standard', ['sheet_normal'], { tableData: mixed, templateScope: null });
+  assert.match(filtered.tableDataText, /其他业务表/); assert.doesNotMatch(filtered.tableDataText, /蝴蝶·二、点数账目/);
+  const manuallySelected = await prepare.prepareAIInput_ACU([], 'manual_unified', ['sheet_shiro_memory_2'], { tableData: wire, templateScope: null });
+  assert.match(manuallySelected.tableDataText, /可用余额/); assert.match(manuallySelected.tableDataText, /10/);
+  assert.equal(wire.sheet_shiro_memory_2.updateConfig.updateFrequency, 0, 'frequency disables automatic scheduling, not explicit manual selection');
+});
+
+// Regression expectations below are intentionally strict: the controller must not
+// expose a different account's data or spend an API call on already obsolete input.
+test('switching chats never publishes old account balance under the new chat account', async () => {
   const h = harness();
   try {
     h.setChatLedger('chat-B', core.createLedger('wallet-b'));
@@ -213,3 +306,41 @@ test('story changed during request tokenization cancels before calling the model
   } finally { waiting.resolve(100); await h.controller.dispose(); }
 });
 
+/** Run the returned expression in an actual HTTP(S) browser page to exercise native IndexedDB.
+ * No dependencies, network calls, app globals or existing wallets are needed.
+ * Isolated QA handle and exact-key cleanup preserve user data. Separate-tab tests remain separate evidence.
+ */
+export function nativeIndexedDBProbeSource() {
+  const compile = file => ts.transpileModule(readFileSync(new URL(`src/${file}`, root), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+  const coreSource = compile('core.ts'), storageSource = compile('storage.ts');
+  return `(async()=>{
+    const core=(()=>{const exports={};${coreSource}\nreturn exports;})();
+    const storage=(()=>{const exports={};const require=name=>{if(name==='./core')return core;throw Error('Unexpected dependency '+name)};${storageSource}\nreturn exports;})();
+    const handle='__shiro-native-qa-'+crypto.randomUUID(),scope={origin:location.origin,handle};
+    const a=new storage.LedgerStore(scope),b=new storage.LedgerStore(scope),other=new storage.LedgerStore({origin:location.origin,handle:handle+'-other'});
+    const checks=[];function check(name,value){checks.push({name,pass:!!value});if(!value)throw Error(name)}
+    async function rejected(action,code){try{await action();return false}catch(e){return !code||e.code===code}}
+    const ids=['wallet','restored'];
+    try{
+      await a.create('wallet','Native IndexedDB QA');
+      check('zero initial points',(await a.read('wallet')).balance==='0');
+      await a.transact('wallet',l=>core.credit(l,{requestId:'earn-1',resultId:'result-1',world:'test',source:'test source',outcome:'one actual change',evidence:'test evidence',amount:'1',standardSpec:'one change one point',established:true}));
+      const results=await Promise.allSettled([a.transact('wallet',l=>core.purchase(l,{requestId:'buy-a',quoteId:core.BASELINE_QUOTE_ID})),b.transact('wallet',l=>core.purchase(l,{requestId:'buy-b',quoteId:core.BASELINE_QUOTE_ID}))]);
+      check('native concurrent connections exactly one purchase',results.filter(r=>r.status==='fulfilled').length===1);
+      const ledger=await a.read('wallet');check('no overspend and one inventory',ledger.balance==='0'&&ledger.spend==='1'&&ledger.inventory.length===1);
+      check('handle isolation',(await other.read('wallet'))===undefined&&(await other.list()).length===0);
+      check('async transaction rejected',await rejected(()=>a.transact('wallet',async l=>l),'ASYNC_TRANSACTION'));
+      const before=JSON.stringify(await a.read('wallet'));
+      check('invalid mutation aborts',await rejected(()=>a.transact('wallet',l=>({...l,balance:'999'}))));
+      check('abort leaves exact ledger',JSON.stringify(await a.read('wallet'))===before);
+      const backup=await a.export('wallet');check('existing-account import blocked',await rejected(()=>a.import(backup),'ACCOUNT_EXISTS'));
+      const restored=await a.import(backup,'restored');check('restoration under new ID preserves history',restored.accountId==='restored'&&JSON.stringify(restored.transactions)===JSON.stringify(ledger.transactions));
+      const bad=JSON.parse(JSON.stringify(backup));bad.ledger.balance='-1';check('negative backup rejected',await rejected(()=>a.import(bad,'negative')));
+      await a.close();const reopened=new storage.LedgerStore(scope);check('close and reopen reads committed ledger',JSON.stringify(await reopened.read('wallet'))===before);await reopened.close();
+      return {pass:true,engine:navigator.userAgent,origin:location.origin,checks,scope:'isolated QA handle; native IndexedDB; two connections; no real-host acceptance claimed'};
+    }finally{
+      await a.close();await b.close();await other.close();
+      await new Promise((resolve,reject)=>{const request=indexedDB.open('shiro-butterfly-shop-v1',1);request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('ledgers','readwrite');for(const id of ids)tx.objectStore('ledgers').delete([scope.origin,scope.handle,id]);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)}}});
+    }
+  })()`;
+}

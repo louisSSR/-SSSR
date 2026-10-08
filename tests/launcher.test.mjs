@@ -8,11 +8,14 @@ try { ({ JSDOM } = require('jsdom')); }
 catch { ({ JSDOM } = createRequire(new URL('../../../artifacts/shiro-butterfly-shop-20261006/patched-shujuku/package.json', import.meta.url))('jsdom')); }
 const module = { exports: {} };
 new Function('module', 'exports', ts.transpileModule(readFileSync(new URL('../src/launcher.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText)(module, module.exports);
-const { readLauncherPosition, launcherBounds, placeLauncher, normalizeLauncher, createLauncherPosition, LAUNCHER_POSITION_KEY } = module.exports;
+const { readLauncherPosition, launcherBounds, placeLauncher, normalizeLauncher, createLauncherPosition, LAUNCHER_POSITION_KEY, LAUNCHER_IDLE_DELAY } = module.exports;
 function fixture(storageOverride) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost:18006/' }), win = dom.window;
   const surface = win.document.createElement('div'); win.document.body.append(surface);
   const shadow = surface.attachShadow({ mode: 'open' });
+  const timers = new Map(); let timerId = 0;
+  win.setTimeout = (fn, delay) => { timers.set(++timerId, { fn, delay }); return timerId; };
+  win.clearTimeout = id => timers.delete(id);
   let size = { width: 390, height: 844 }, opens = 0;
   surface.getBoundingClientRect = () => ({ ...size, left: 0, top: 0 });
   const values = new Map(), writes = [];
@@ -29,11 +32,12 @@ function fixture(storageOverride) {
     const event = new win.MouseEvent(type, { bubbles: true, composed: true, cancelable: true, clientX: x, clientY: y, button: 0, ...extra });
     Object.defineProperties(event, { pointerId: { value: extra.pointerId ?? 1 }, isPrimary: { value: extra.isPrimary ?? true } }); item.dispatchEvent(event);
   }
-  return { dom, win, surface, shadow, storage, values, writes, point, pointer, get opens() { return opens; }, get item() { return item; }, get api() { return api; },
+  return { dom, win, surface, shadow, storage, values, writes, timers, point, pointer, get opens() { return opens; }, get item() { return item; }, get api() { return api; },
+    idle: () => { const [id, entry] = [...timers][0]; assert.equal(entry.delay, 5000); timers.delete(id); entry.fn(); },
     resize: (width, height) => { size = { width, height }; api.reflow(); },
     remount: () => { item.remove(); item = makeButton(); api.refresh(); },
     reload: () => { api.dispose(); api = createLauncherPosition(surface, shadow, storage); },
-    close: () => { api.dispose(); dom.window.close(); },
+    close: () => { api.dispose(); assert.equal(timers.size, 0); dom.window.close(); },
     click: (detail = 1) => item.dispatchEvent(new win.MouseEvent('click', { bubbles: true, composed: true, cancelable: true, detail })),
   };
 }
@@ -104,4 +108,25 @@ test('dispose clears transient state and listeners without erasing the saved pre
   assert.equal(f.surface.style.getPropertyValue('--shiro-launcher-x'), '');
   f.pointer('pointerdown', 20, 20); f.pointer('pointermove', 500, 500); f.pointer('pointerup', 500, 500);
   assert.equal(f.surface.style.getPropertyValue('--shiro-launcher-x'), ''); assert.equal(f.values.get(LAUNCHER_POSITION_KEY), saved); assert.equal(f.writes.length, 1); f.close();
+});
+
+test('five-second idle docks the nearest edge with a full safe hit box; tucked tap opens directly and drag expands', () => {
+  assert.equal(LAUNCHER_IDLE_DELAY, 5000);
+  const f = fixture(); f.idle(); assert.equal(f.item.dataset.dockEdge, 'right'); assert.ok(f.item.classList.contains('is-tucked'));
+  assert.equal(f.point().x, 330); assert.ok(f.point().x + 48 <= 390 - 12);
+  f.pointer('pointerdown', 350, 730); assert.equal(f.item.classList.contains('is-tucked'), false);
+  f.pointer('pointerup', 350, 730); f.click(); assert.equal(f.opens, 1);
+  f.pointer('pointerdown', 350, 730); f.pointer('pointermove', 30, 400); f.pointer('pointerup', 30, 400); f.click(); assert.equal(f.opens, 1);
+  f.idle(); assert.equal(f.item.dataset.dockEdge, 'left'); assert.equal(f.point().x, 12); f.reload(); assert.equal(f.point().x, 12); f.close();
+});
+
+test('editing hides decoration, cancels a drag and idle timer, restores placement and stops on disposal', async () => {
+  const f = fixture(), field = f.win.document.createElement('textarea'); f.win.document.body.append(field);
+  f.pointer('pointerdown', 340, 710); f.pointer('pointermove', 100, 100); field.focus();
+  assert.equal(f.surface.hasAttribute('data-shiro-input-active'), true); assert.equal(f.timers.size, 0); assert.equal(f.writes.length, 0);
+  f.pointer('pointerup', 100, 100); assert.equal(f.writes.length, 0);
+  field.blur(); await Promise.resolve(); assert.equal(f.surface.hasAttribute('data-shiro-input-active'), false); assert.equal(f.timers.size, 1);
+  f.pointer('pointerdown', 340, 710); f.pointer('pointermove', 100, 100); f.win.dispatchEvent(new f.win.Event('orientationchange'));
+  f.pointer('pointerup', 100, 100); assert.equal(f.writes.length, 0);
+  f.api.dispose(); field.focus(); assert.equal(f.surface.hasAttribute('data-shiro-input-active'), false); assert.equal(f.timers.size, 0); f.close();
 });

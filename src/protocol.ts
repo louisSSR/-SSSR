@@ -26,7 +26,7 @@ JSON 格式（所有金额是正十进制字符串，禁止指数/浮点数；�
 {"world":{"name":"世界名","systems":["主要体系"],"evidence":"识别依据"},"quotes":[{"id":"stable-item-id","name":"名称","category":"体系","world":"当前世界名","kind":"permanent 或 consumable 或 equipment","price":"2","spec":{"content":"所得内容","strength":"实际强度","quantity":"数量","range":"作用范围","duration":"持续时间","uses":"使用次数","conditions":"完整承接和掌握","crossWorld":"跨界实际效力"}}],"effects":[{"resultId":"稳定结果ID","source":"介入来源及归因","outcome":"本次新增成立的结果","evidence":"最新AI正文中的原句","amount":"1","standardSpec":"固定计功规格","established":true,"independent":true,"kind":"initial","world":"结果所在世界"}],"ripples":[{"id":"stable-ripple-id","world":"来源世界","source":"最初行为","settled":"已结算部分或无","tracking":"尚未成立的余波","status":"active"}]}
 可选附加数组：impressions=[{"id":"稳定印象ID","world":"世界","subject":"人物/势力/重大选择","summary":"已成立的重要印象","evidence":"最新AI正文原句"}]，只记录事实，不把推测写成记忆；同对象的印象变化必须用新的记录ID追加，旧记录ID只能用于原样重试；quests=[{"id":"任务ID","world":"当前世界","title":"白的委托名","objective":"可验证完成目标","reason":"与当前人物或余波的关联","sourceRippleId":"可选，已有余波ID"}]；questCompletions=[{"questId":"已接取任务ID","resultId":"本次真实成立的计功结果ID"}]。完成任务必须同时有实际成立效果，不能仅因用户宣称或对任务的描述而完成；未完成可保留为active。impressions最多8条，quests最多3条，questCompletions最多10条；没有就返回空数组。印象、任务与连锁反应对应四表中的重要印象和连锁反应，点数与消费表由程序按实际交易生成。
 不得返回 requestId、at、余额字段；由程序提供请求标识与时间。仅返回有事实依据的世界；信息不足时name写“世界信息不足”，不编造正典。
-本地账本相关摘录（因长度限制只检索相关项；未展示的历史仍保留且程序照常核验固定价格、去重和余额，不得把遗漏当作不存在）：
+当前聊天原生四表相关摘录（因长度限制只检索相关项；未展示的历史仍保留且程序照常核验固定价格、去重和余额，不得把遗漏当作不存在）：
 ${JSON.stringify(selectEvaluationContext(ledger, context+' '+goal, archiveBytes))}
 待分析故事/世界材料：\n${context}`;
 }

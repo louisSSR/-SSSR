@@ -16,13 +16,13 @@ test('four stable sheet identities have only headers and no account or example r
   assert.deepEqual(Object.keys(template), ['mate', ...keys]);
   assert.equal(template.mate.type, 'chatSheets');
   assert.equal(template.mate.version, 1);
-  const headings = [['对象 / 世界', '最新印象'], ['项目', '明细', '点数'], ['所得', '实际状态', '已消费点数'], ['类型 / 标识', '现况与下一步']];
   const names = ['蝴蝶·一、重要印象', '蝴蝶·二、点数账目', '蝴蝶·三、消费与所得', '蝴蝶·四、连锁反应与任务'];
   for (const [index, key] of keys.entries()) {
     assert.equal(template[key].uid, key);
     assert.equal(template[key].name, names[index]);
     assert.equal(template[key].orderNo, index);
-    assert.deepEqual(template[key].content, [['row_id', '记录ID', '本源账户', ...headings[index]]]);
+    assert.equal(template[key].content.length, 1);
+    assert.deepEqual(template[key].content[0].slice(0, 6), ['row_id', '记录ID', '本源账户', '记录种类', '稳定序号', '业务ID']);
   }
   assert.doesNotMatch(JSON.stringify(template), /empty-template|2026-10-06|shiro-memory:/);
 });
@@ -34,8 +34,9 @@ test('all tables disable worldbook export, injection and automatic fill independ
     assert.equal(sheet.exportConfig.injectIntoWorldbook, false);
     assert.equal(sheet.exportConfig.extraIndexEnabled, false);
     assert.equal(sheet.updateConfig.updateFrequency, 0);
-    assert.match(sheet.sourceData.note, /完整历史保存在商店本源账本/);
-    assert.match(sheet.sourceData.updateNode, /不要自动填表/);
+    assert.match(sheet.sourceData.note, /白·蝴蝶四表业务真源 v2/);
+    assert.match(sheet.sourceData.note, /可读业务列就是账本真源/);
+    assert.match(sheet.sourceData.updateNode, /禁止自动填表/);
     for (const field of ['note', 'initNode', 'insertNode', 'updateNode', 'deleteNode', 'ddl']) assert.equal(typeof sheet.sourceData[field], 'string');
   }
 });
@@ -47,7 +48,8 @@ test('all four DDLs execute in SQLite with exact columns and preserve precise te
       const sheet = template[key], name = `shiro_memory_${index + 1}`;
       db.exec(sheet.sourceData.ddl);
       const columns = db.prepare(`PRAGMA table_info(${name})`).all();
-      assert.deepEqual(columns.map(column => column.name), ['row_id', ...sheet.content[0].slice(1).map((_, i) => `c${i}`)]);
+      assert.equal(columns.length, sheet.content[0].length);
+      assert.equal(columns[1].name, 'record_id');
       assert.equal(columns[0].pk, 1);
       assert.ok(columns.slice(1).every(column => column.type === 'TEXT'));
       assert.equal(columns[1].notnull, 1);
