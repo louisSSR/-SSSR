@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "themeScriptVersion": "1.3.0",
+  "themeScriptVersion": "1.3.1",
   "nativeSchemaVersion": 2,
   "files": [
     {
@@ -15,8 +15,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 5325,
-      "sha256": "b3f5dacdc661f61c91a1f7e7b3f82926938dfcbfb1c54792f12ee582ab3b5dc9"
+      "bytes": 5415,
+      "sha256": "f79fe3a00a1a11fba4fa17826c1a2f686296ac876709c7c8e0a863ea68ae5bee"
     },
     {
       "path": "assets/shiro-chibi.png",
@@ -106,7 +106,7 @@
     {
       "path": "docs/database-update-contract.md",
       "bytes": 1200,
-      "sha256": "ec50ce6546672d35e3cef97a676bf861ad5d80194d7ca533ce690467f12dd825"
+      "sha256": "2a4de03839db2928e6d2fd941bec81ccfb8986920fdbcb17df59f42940938dc6"
     },
     {
       "path": "docs/four-tables-install.md",
@@ -355,8 +355,8 @@
     },
     {
       "path": "theme-script/README.md",
-      "bytes": 4425,
-      "sha256": "a19d1cbf2a405168443e002f2d5e8e18771119fcb6aab2dfc4b91e6f717f86b5"
+      "bytes": 5294,
+      "sha256": "da6efea3d0607e8bc469ef40f2a26927d5e1e30fb6915b750368d456dc652663"
     },
     {
       "path": "theme-script/assets/shiro-peek-head-hands.png",
@@ -376,12 +376,12 @@
     {
       "path": "theme-script/dist/component-update-manifest.json",
       "bytes": 387,
-      "sha256": "5b26a0b629600699f4e061d7f2228fb6f04a0f7f4ee7a5e3b4df69163b5e6ec1"
+      "sha256": "ed3b71586256c449fc4021bbad7e394fe01d09bf2892fef9946f7fe8eec8c0af"
     },
     {
       "path": "theme-script/dist/shiro-database-theme.script.json",
-      "bytes": 4237847,
-      "sha256": "b48e788d522cc2ad4726bc0295a3642116b96adf0ca210ccb92e6537fefae687"
+      "bytes": 4239338,
+      "sha256": "0a09e281f43249b0b900e729b966339d8bb9147162c2b468edc22c983a3538b8"
     },
     {
       "path": "theme-script/docs/memory-view-contract.md",
@@ -395,8 +395,8 @@
     },
     {
       "path": "theme-script/docs/runtime-contract.md",
-      "bytes": 5909,
-      "sha256": "defdf06b1e9a503d252d181d238a97d55f69c8aff46a3fbbadc133006ab66dc9"
+      "bytes": 6700,
+      "sha256": "8ea95976710c6a3a58eb760fa1fa927553449d8fa1b94fe8503a8368e478d90c"
     },
     {
       "path": "theme-script/docs/validation-1.1.0.md",
@@ -419,24 +419,29 @@
       "sha256": "91978b9abfaf383df250a859029d44a93f667597415db820e8a496eefaacd748"
     },
     {
+      "path": "theme-script/docs/validation-1.3.1.md",
+      "bytes": 4154,
+      "sha256": "bb2cfa6a0deedad05639535441ee10684b3049b14c312630f3294486ce6b7723"
+    },
+    {
       "path": "theme-script/package.json",
       "bytes": 420,
-      "sha256": "4378d6e085d591dc54a62d6ffbaf2b8fa25cfa5a0f64516671f4fe601a4f1907"
+      "sha256": "2d8711ba2aea0b7d10085cf0acd0a658702e78590a511e7639fbb5c51a3089d0"
     },
     {
       "path": "theme-script/script-spec.json",
-      "bytes": 1797,
-      "sha256": "950b0e428862f6d65fadce59656d60491c7a428edf3a5c2e23669389f4539eb9"
+      "bytes": 1926,
+      "sha256": "aa2207676d58aa34e6d5ead682ea1fb1d14ac6193ff5b989bcb732352a9ddbdc"
     },
     {
       "path": "theme-script/src/database-theme.css",
-      "bytes": 30647,
-      "sha256": "32966a3bfff09a28385bef453d22ed124e40de2e6fec3c98f69b409b70bfc63a"
+      "bytes": 31064,
+      "sha256": "9bbc926c217eb27dda72227f03628933098b087479ee2495d2650ea0bdbe8369"
     },
     {
       "path": "theme-script/src/database-theme.ts",
-      "bytes": 22888,
-      "sha256": "3de3be09fd6a065082973c456031d5137462ba13bff3752c29b3398f11073829"
+      "bytes": 23061,
+      "sha256": "25d5e8dc4999f3a4a5985255587341fd87763a5b45c57e4ab6e0045ce042556e"
     },
     {
       "path": "theme-script/src/env.d.ts",
@@ -450,28 +455,28 @@
     },
     {
       "path": "theme-script/src/puppet.ts",
-      "bytes": 10915,
-      "sha256": "2a03ef812ca7aa59eb86149c5f26648729ba17ba1768a7c752f3fcb0db0a2552"
+      "bytes": 12489,
+      "sha256": "9b3d87110e3554a48d2cda749300ea28eb1bf048b0a443cf5e9f098211eb2c7d"
     },
     {
       "path": "theme-script/src/runtime.ts",
       "bytes": 5599,
-      "sha256": "3118919400cfe2a53a9fa7e4c565edada3c5dbb896be74ed04fd4e24362191b3"
+      "sha256": "61e6194345831b0d2c890cced25b7c09b8ba3d76503ca73018a469d7deeda42f"
     },
     {
       "path": "theme-script/tests/database-theme.test.mjs",
-      "bytes": 32206,
-      "sha256": "d5f47000e1e2f32c11d122d963dcd56446de6566f90893f491d315ba4aa21243"
+      "bytes": 34204,
+      "sha256": "11fe6bd15aa42b42d623bb820dcc66a868f9c686d91b71d8defc2db9cfeeef98"
     },
     {
       "path": "theme-script/tests/puppet.test.mjs",
-      "bytes": 8568,
-      "sha256": "b12005281d866ff1cf0ea08316b88d457517d51719d9583d720c23f9e6297d66"
+      "bytes": 13103,
+      "sha256": "8ae341759bc479dfd4c9fe2fbd90194c82f988b9da4e0ceb8df350868b9d05d7"
     },
     {
       "path": "theme-script/tests/script-runtime.test.mjs",
-      "bytes": 13761,
-      "sha256": "64ec551292213674c5cc317880094ee23bb7bb4274bf44fedfb9e3a7e44ec1c4"
+      "bytes": 14036,
+      "sha256": "18a877e9ed1b226666251cf67859186dcf0ac8d859882c54d980b1eca34584eb"
     },
     {
       "path": "theme-script/tsconfig.json",

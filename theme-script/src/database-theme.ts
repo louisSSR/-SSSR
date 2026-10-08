@@ -338,8 +338,10 @@ export function mountDatabaseTheme(options: DatabaseThemeOptions): DatabaseTheme
   const observer = new win.MutationObserver(records => {
     const relevant = records.some(record => {
       const target = record.target as Element;
-      // Only upstream v-show ownership matters; pet dragging/input styles must not trigger layout scans.
+      // Upstream v-show and actual pet position matter. A peek DOM node alone
+      // is not proof of docking after dragging or a viewport resize.
       if (record.type === 'attributes' && record.attributeName === 'style') return target.matches(`${ROOT}, ${ROOT} > .acu-v2-app__shell, ${COMPANION} > .acu-desk-pet > .acu-desk-pet__peek > img.acu-desk-pet__peek-img`) ||
+        (target.matches(`${COMPANION} > .acu-desk-pet`) && target.parentElement?.getAttribute(COMPANION_MARKER) === VERSION) ||
         (target.matches(`${COMPANION} > .acu-notice-bubble`) && target.parentElement?.getAttribute(COMPANION_MARKER) === VERSION);
       if ([...decorated.keys(), ...companions.keys()].some(root => root === target || root.contains(target))) return true;
       const surface = `${ROOT}, ${COMPANION}`;

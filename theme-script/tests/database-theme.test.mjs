@@ -417,3 +417,25 @@ test('companion late mount/peek remount are recognised, unrelated overlays and f
   assert.equal(layer.hasAttribute('data-shiro-database-companion'), false);
   f.mount.dispose(); f.dom.window.close();
 });
+
+test('native pet position and transition completion update wall presentation without hover, and off restores native geometry', async () => {
+  const f = fixture(), layer = f.doc.createElement('div'); layer.className = 'acu-desk-pet-layer';
+  layer.innerHTML = '<div class="acu-desk-pet is-tucked" style="width:36px;height:64px;transform:translate3d(988px,200px,0)"><div class="acu-desk-pet__peek is-right"><img class="acu-desk-pet__peek-img" style="width:64px;height:64px;transform:rotate(-90deg)" src="/native.png"></div></div>';
+  const pet = layer.firstElementChild;
+  let left = 988;
+  pet.getBoundingClientRect = () => ({ left, top: 200, right: left + 36, bottom: 264, width: 36, height: 64, x: left, y: 200 });
+  f.doc.body.append(layer); await flush(); const sprite = pet.querySelector('.shiro-db-puppet-peek');
+  assert.equal(sprite.dataset.shiroPuppetPresentation, 'peek');
+  left = 300; pet.style.transform = 'translate3d(300px,200px,0)'; await flush();
+  assert.equal(sprite.dataset.shiroPuppetPresentation, 'body', 'native inline position change alone removes head image');
+  assert.match(sprite.style.backgroundImage, /shiro-puppet-sheet.png/); assert.equal(sprite.dataset.shiroPuppetPose, 'idle');
+  // Native CSS can finish moving after its last style mutation. The real
+  // transition event must re-evaluate contact even without a new Vue node.
+  left = 988; pet.dispatchEvent(new f.dom.window.Event('transitionend', { bubbles: true }));
+  assert.equal(sprite.dataset.shiroPuppetPresentation, 'peek');
+  const latestStyle = pet.getAttribute('style'), imageStyle = pet.querySelector('img').getAttribute('style');
+  f.mount.setEnabled(false);
+  assert.equal(pet.getAttribute('style'), latestStyle); assert.equal(pet.querySelector('img').getAttribute('style'), imageStyle);
+  pet.dispatchEvent(new f.dom.window.Event('transitionend', { bubbles: true })); assert.equal(pet.querySelector('.shiro-db-puppet'), null);
+  f.mount.dispose(); f.dom.window.close();
+});

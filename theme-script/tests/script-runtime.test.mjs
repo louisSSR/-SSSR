@@ -127,7 +127,9 @@ test('actual embedded companion sheet is a direct background URL, square frame C
   const style = f.doc.querySelector('[data-shiro-database-style]');
   assert.doesNotMatch(style.textContent, /--shiro-db-companion-image/);
   assert.equal(layer.querySelector('.shiro-db-puppet-body').style.backgroundImage, `url("${png}")`);
-  assert.equal(layer.querySelector('.shiro-db-puppet-peek').dataset.shiroPuppetPose, 'peek');
+  assert.equal(layer.querySelector('.shiro-db-puppet-peek').dataset.shiroPuppetPose, 'idle');
+  assert.equal(layer.querySelector('.shiro-db-puppet-peek').dataset.shiroPuppetPresentation, 'body', 'a peek node without real native wall tucking stays a complete puppet');
+  assert.equal(layer.querySelector('.shiro-db-puppet-peek').style.backgroundImage, `url("${png}")`);
   assert.match(style.textContent, /background-size:\s*300% 200%/);
   assert.equal(layer.querySelector('.acu-desk-pet__img').getAttribute('src'), '/native-pose.png');
   assert.equal(layer.querySelector('.acu-desk-pet__peek-img').getAttribute('src'), '/native-peek.png');

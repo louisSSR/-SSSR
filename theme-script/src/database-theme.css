@@ -457,8 +457,13 @@
 .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek.is-left:has(> .shiro-db-puppet-peek) { top: 0; right: auto; bottom: auto; left: 4px; }
 .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek.is-top:has(> .shiro-db-puppet-peek) { top: 4px; right: auto; bottom: auto; left: 0; }
 .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek.is-bottom:has(> .shiro-db-puppet-peek) { top: auto; right: auto; bottom: 4px; left: 0; }
-.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] .shiro-db-puppet-peek {
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] .shiro-db-puppet-peek[data-shiro-puppet-presentation="peek"] {
   inset: 0; transform: none; animation: none; background-size: contain;
+}
+/* Off the wall, even a transient native peek container shows the complete
+   six-state puppet. Never require hover to replace the independent head. */
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] .shiro-db-puppet-peek[data-shiro-puppet-presentation="body"] {
+  inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); background-size: 300% 200%;
 }
 .acu-v2-app[data-shiro-database-theme="blank-chess-v1"][data-shiro-input-active] :is(.shiro-db-masthead, .shiro-db-portrait) { display: none; }
 .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"][data-shiro-input-active] > .acu-desk-pet { visibility: hidden; }

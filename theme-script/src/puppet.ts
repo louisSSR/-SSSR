@@ -30,6 +30,20 @@ export function createPuppetSprite(doc: Document, imageUrl: string, className: s
 }
 
 export interface PuppetCompanion { sync(): void; dispose(): void }
+/** A peek node alone can survive one Vue frame while dragging or resizing.
+ * Only the native tucked state at its actual viewport edge selects head + hands. */
+export function isPuppetWallDocked(pet: Element | null, anchor: Element, win: Window): boolean {
+  if (!pet?.classList.contains('is-tucked') || pet.classList.contains('is-dragging') || anchor.parentElement !== pet) return false;
+  const edges = ['left', 'right', 'top', 'bottom'].filter(edge => anchor.classList.contains(`is-${edge}`));
+  if (edges.length !== 1) return false;
+  const rect = pet.getBoundingClientRect(), width = win.innerWidth, height = win.innerHeight;
+  if (!(rect.width > 0 && rect.height > 0 && width > 0 && height > 0)) return false;
+  // This is wall contact, not the native 28px snap threshold. The native root
+  // does not breathe; its child does, so 2px only tolerates fractional layout.
+  const gap = edges[0] === 'left' ? rect.left : edges[0] === 'right' ? width - rect.right
+    : edges[0] === 'top' ? rect.top : height - rect.bottom;
+  return Number.isFinite(gap) && Math.abs(gap) <= 2;
+}
 export function createPuppetPresentation(doc: Document, imageUrl: string, onQuiet?: (quiet: boolean) => void, peekImageUrl?: string) {
   const win = doc.defaultView!;
   let disposed = false, quiet = false, lineIndex = 0, lastJoke = -Infinity;
@@ -94,11 +108,27 @@ export function createPuppetPresentation(doc: Document, imageUrl: string, onQuie
     let drag: { id: number; x: number; y: number; moved: boolean } | undefined;
     const sprites = new Map<'body' | 'peek', { anchor: Element; node: HTMLElement }>();
     function render(): void {
+      const pet = layer.querySelector(':scope > .acu-desk-pet');
       for (const [kind, item] of sprites) {
         item.node.dataset.shiroPuppetQuiet = String(quiet);
-        // The independent collapsed head stays upright on every edge. Only the
-        // expanded six-cell body gets reactions and tilt.
-        setPuppetPose(item.node, kind === 'peek' ? 'peek' : quiet ? 'idle' : pose);
+        const docked = kind === 'peek' && !drag?.moved && isPuppetWallDocked(pet, item.anchor, win);
+        const presentation = docked ? 'peek' : 'body';
+        if (item.node.dataset.shiroPuppetPresentation !== presentation) {
+          item.node.dataset.shiroPuppetPresentation = presentation;
+          item.node.style.backgroundImage = `url(${JSON.stringify(docked && peekImageUrl ? peekImageUrl : imageUrl)})`;
+          if (docked && peekImageUrl) item.node.dataset.shiroPuppetIndependentPeek = 'true';
+          else item.node.removeAttribute('data-shiro-puppet-independent-peek');
+        }
+        if (kind === 'peek') {
+          const nativeImage = item.anchor.querySelector(':scope > img.acu-desk-pet__peek-img') as HTMLElement;
+          for (const key of ['width', 'height']) {
+            const value = docked ? nativeImage?.style.getPropertyValue(key) : '';
+            if (value) item.node.style.setProperty(key, value); else item.node.style.removeProperty(key);
+          }
+        }
+        // Normal idle needs no mouse contact. The six-cell puppet returns even
+        // if the old peek container is briefly still present off the wall.
+        setPuppetPose(item.node, docked ? 'peek' : quiet ? 'idle' : pose);
       }
     }
     function cancelReaction(): void {
@@ -135,20 +165,8 @@ export function createPuppetPresentation(doc: Document, imageUrl: string, onQuie
           const current = sprites.get(kind);
           if (current && (current.anchor !== anchor || !current.node.isConnected)) { current.node.remove(); sprites.delete(kind); }
           if (anchor && !sprites.has(kind)) {
-            const node = createPuppetSprite(doc, kind === 'peek' && peekImageUrl ? peekImageUrl : imageUrl, `shiro-db-puppet-${kind}`, kind === 'peek' ? 'peek' : pose);
-            if (kind === 'peek' && peekImageUrl) node.dataset.shiroPuppetIndependentPeek = 'true';
+            const node = createPuppetSprite(doc, imageUrl, `shiro-db-puppet-${kind}`, pose);
             anchor.append(node); sprites.set(kind, { anchor, node });
-          }
-          if (kind === 'peek' && anchor) {
-            const nativeImage = anchor.querySelector(':scope > img.acu-desk-pet__peek-img') as HTMLElement;
-            const node = sprites.get(kind)!.node;
-            // Width/height are the public native size, not persisted drag
-            // coordinates. CSS anchors our upright head inward with 4px room;
-            // native image rotations/offsets must never rotate this new sprite.
-            for (const key of ['width', 'height']) {
-              const value = nativeImage.style.getPropertyValue(key);
-              if (value) node.style.setProperty(key, value); else node.style.removeProperty(key);
-            }
           }
         }
         if (quiet) { cancelReaction(); pose = 'idle'; }
@@ -157,6 +175,7 @@ export function createPuppetPresentation(doc: Document, imageUrl: string, onQuie
       dispose() {
         if (stopped) return; stopped = true; reset();
         layer.removeEventListener('pointerdown', down as EventListener, true);
+        layer.removeEventListener('transitionend', render);
         doc.removeEventListener('pointermove', move as EventListener, true); doc.removeEventListener('pointerup', up as EventListener, true); doc.removeEventListener('pointercancel', cancel as EventListener, true);
         win.removeEventListener('resize', reset); win.removeEventListener('orientationchange', reset); win.removeEventListener('blur', reset);
         doc.removeEventListener('focusin', reset);
@@ -166,6 +185,9 @@ export function createPuppetPresentation(doc: Document, imageUrl: string, onQuie
     };
     companions.add(api);
     layer.addEventListener('pointerdown', down as EventListener, { capture: true, passive: true });
+    // A native dock transition can finish after the last DOM mutation. Recheck
+    // actual wall contact at that point, with no polling and no hover handler.
+    layer.addEventListener('transitionend', render);
     doc.addEventListener('pointermove', move as EventListener, { capture: true, passive: true }); doc.addEventListener('pointerup', up as EventListener, { capture: true, passive: true }); doc.addEventListener('pointercancel', cancel as EventListener, { capture: true, passive: true });
     win.addEventListener('resize', reset); win.addEventListener('orientationchange', reset); win.addEventListener('blur', reset); doc.addEventListener('focusin', reset); win.visualViewport?.addEventListener('resize', reset);
     api.sync(); return api;

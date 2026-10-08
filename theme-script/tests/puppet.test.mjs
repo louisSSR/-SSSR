@@ -21,6 +21,9 @@ function pointer(f, target, type, x, y, extra = {}) {
   const event = new f.dom.window.Event(type, { bubbles: true, cancelable: true });
   Object.assign(event, { pointerId: 1, clientX: x, clientY: y, button: 0, isPrimary: true, ...extra }); target.dispatchEvent(event); return event;
 }
+function box(pet, left, top, width = 64, height = 64) {
+  pet.getBoundingClientRect = () => ({ left, top, right: left + width, bottom: top + height, width, height, x: left, y: top });
+}
 test('six states select single square cells on the dedicated sheet, never a scaled img contact sheet', () => {
   const f = fixture(), sprite = createPuppetSprite(f.doc, 'data:image/png;base64,iVBORw0KGgo=', 'test');
   const positions = [];
@@ -66,11 +69,56 @@ test('rotation/cancel/blur cancel the old gesture, preserve latest native pose, 
 test('independent peek preserves native size while discarding rotation and offsets; future layouts remove owned spans', () => {
   const f = fixture(), layer = f.doc.querySelector('.acu-desk-pet-layer'), pet = layer.querySelector('.acu-desk-pet'), companion = f.presentation.companion(layer);
   pet.innerHTML = '<div class="acu-desk-pet__peek is-right" style="width:36px;height:64px"><img class="acu-desk-pet__peek-img" src="/peek.png" style="width:64px;height:64px;top:0;right:0;transform:rotate(-90deg)"></div>';
+  pet.classList.add('is-tucked'); box(pet, f.dom.window.innerWidth - 36, 200, 36);
   companion.sync(); const span = pet.querySelector('.shiro-db-puppet-peek'), image = pet.querySelector('img');
   assert.equal(span.dataset.shiroPuppetPose, 'peek'); assert.equal(span.dataset.shiroPuppetIndependentPeek, 'true'); assert.match(span.style.backgroundImage, /shiro-peek-head-hands/);
   assert.match(span.style.backgroundPosition, /^center(?: center)?$/); assert.equal(span.style.width, '64px'); assert.equal(span.style.height, '64px'); assert.equal(span.style.right, ''); assert.equal(span.style.transform, ''); assert.equal(pet.querySelectorAll('.shiro-db-puppet-body').length, 0);
   const before = image.getAttribute('style'); pointer(f, pet, 'pointerdown', 1, 1); pointer(f, pet, 'pointermove', 25, 25);
-  assert.equal(span.dataset.shiroPuppetPose, 'peek'); assert.equal(image.getAttribute('style'), before);
+  assert.equal(span.dataset.shiroPuppetPose, 'carried'); assert.equal(span.dataset.shiroPuppetPresentation, 'body'); assert.equal(image.getAttribute('style'), before);
+  pointer(f, pet, 'pointercancel', 25, 25); assert.equal(span.dataset.shiroPuppetPresentation, 'peek');
   image.style.width = '90px'; companion.sync(); assert.equal(span.style.width, '90px'); assert.equal(pet.querySelectorAll('.shiro-db-puppet').length, 1);
   image.className = 'future-image'; companion.sync(); assert.equal(pet.querySelector('.shiro-db-puppet'), null); f.close();
+});
+
+test('initial and ordinary idle use the complete puppet without mouse contact; a centre-screen peek node is not docking', () => {
+  const f = fixture(), layer = f.doc.querySelector('.acu-desk-pet-layer'), pet = layer.querySelector('.acu-desk-pet'), companion = f.presentation.companion(layer);
+  box(pet, 300, 200);
+  const body = pet.querySelector('.shiro-db-puppet-body');
+  assert.equal(body.dataset.shiroPuppetPose, 'idle'); assert.equal(body.dataset.shiroPuppetPresentation, 'body');
+  assert.equal(body.dataset.shiroPuppetIndependentPeek, undefined); assert.doesNotMatch(body.style.backgroundImage, /head-hands/);
+  pet.innerHTML = '<div class="acu-desk-pet__peek is-right"><img class="acu-desk-pet__peek-img" style="width:64px;height:64px" src="/peek.png"></div>';
+  pet.classList.add('is-tucked'); companion.sync();
+  const fallback = pet.querySelector('.shiro-db-puppet-peek');
+  assert.equal(fallback.dataset.shiroPuppetPresentation, 'body'); assert.equal(fallback.dataset.shiroPuppetPose, 'idle');
+  assert.equal(fallback.dataset.shiroPuppetIndependentPeek, undefined); assert.equal(fallback.style.width, ''); assert.equal(fallback.style.height, '');
+  assert.doesNotMatch(fallback.style.backgroundImage, /head-hands/); f.close();
+});
+
+test('only actual four-edge native tucking selects the head; dragging, leaving the wall and widening restore complete puppet without hover', () => {
+  const f = fixture(), layer = f.doc.querySelector('.acu-desk-pet-layer'), pet = layer.querySelector('.acu-desk-pet'), companion = f.presentation.companion(layer);
+  const { innerWidth: width, innerHeight: height } = f.dom.window;
+  for (const edge of ['left', 'right', 'top', 'bottom']) {
+    pet.className = 'acu-desk-pet is-tucked';
+    pet.innerHTML = `<div class="acu-desk-pet__peek is-${edge}"><img class="acu-desk-pet__peek-img" style="width:64px;height:64px" src="/native-${edge}.png"></div>`;
+    const atWall = () => box(pet, edge === 'left' ? 0 : edge === 'right' ? width - 36 : 300,
+      edge === 'top' ? 0 : edge === 'bottom' ? height - 36 : 200, ['left', 'right'].includes(edge) ? 36 : 64, ['top', 'bottom'].includes(edge) ? 36 : 64);
+    atWall(); companion.sync(); const sprite = pet.querySelector('.shiro-db-puppet-peek');
+    assert.equal(sprite.dataset.shiroPuppetPresentation, 'peek', edge); assert.equal(sprite.dataset.shiroPuppetIndependentPeek, 'true');
+    assert.match(sprite.style.backgroundImage, /head-hands/);
+    pet.classList.add('is-dragging'); companion.sync(); assert.equal(sprite.dataset.shiroPuppetPresentation, 'body', `${edge} native drag`);
+    pet.classList.remove('is-dragging'); companion.sync(); assert.equal(sprite.dataset.shiroPuppetPresentation, 'peek');
+    pointer(f, pet, 'pointerdown', 20, 20); pointer(f, pet, 'pointermove', 50, 50);
+    assert.equal(sprite.dataset.shiroPuppetPresentation, 'body', `${edge} transient peek before Vue remount`);
+    box(pet, 300, 200); pointer(f, pet, 'pointerup', 50, 50); companion.sync();
+    assert.equal(sprite.dataset.shiroPuppetPresentation, 'body', `${edge} centre`); assert.equal(sprite.dataset.shiroPuppetIndependentPeek, undefined);
+    atWall(); companion.sync(); assert.equal(sprite.dataset.shiroPuppetPresentation, 'peek');
+    pet.classList.remove('is-tucked'); companion.sync(); assert.equal(sprite.dataset.shiroPuppetPresentation, 'body', `${edge} untucked at wall`);
+    f.dom.window.dispatchEvent(new f.dom.window.Event('blur'));
+  }
+  pet.className = 'acu-desk-pet is-tucked'; pet.innerHTML = '<div class="acu-desk-pet__peek is-right"><img class="acu-desk-pet__peek-img" style="width:64px;height:64px" src="/native.png"></div>';
+  box(pet, width - 36, 200, 36); companion.sync(); const sprite = pet.querySelector('.shiro-db-puppet-peek');
+  assert.equal(sprite.dataset.shiroPuppetPresentation, 'peek');
+  Object.defineProperty(f.dom.window, 'innerWidth', { configurable: true, value: width + 200 });
+  f.dom.window.dispatchEvent(new f.dom.window.Event('resize'));
+  assert.equal(sprite.dataset.shiroPuppetPresentation, 'body'); assert.equal(sprite.dataset.shiroPuppetPose, 'idle'); f.close();
 });
