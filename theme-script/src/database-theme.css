@@ -488,6 +488,22 @@
 .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek:has(> .shiro-db-puppet-peek) > img.acu-desk-pet__peek-img { opacity: 0; }
 .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] :is(.shiro-db-puppet-body, .shiro-db-puppet-peek) { position: absolute; width: 100%; height: 100%; filter: drop-shadow(0 3px 6px #8175b440); }
 .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] .shiro-db-puppet-body { inset: 0; }
+/* Native peeks crop a half-height head illustration into a 0.56/0.61-depth
+   window. Our complete square puppet needs a square window, expanded inward.
+   Retain the native root/drag coordinates and give its +/-4px peek motion room. */
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek:has(> .shiro-db-puppet-peek) {
+  position: absolute;
+  aspect-ratio: 1;
+  box-sizing: content-box;
+  padding: 0;
+  overflow: visible;
+}
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek:is(.is-left, .is-right):has(> .shiro-db-puppet-peek) { width: auto; height: 100%; }
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek:is(.is-top, .is-bottom):has(> .shiro-db-puppet-peek) { width: 100%; height: auto; }
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek.is-right:has(> .shiro-db-puppet-peek) { top: 0; right: 4px; bottom: auto; left: auto; }
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek.is-left:has(> .shiro-db-puppet-peek) { top: 0; right: auto; bottom: auto; left: 4px; }
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek.is-top:has(> .shiro-db-puppet-peek) { top: 4px; right: auto; bottom: auto; left: 0; }
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek.is-bottom:has(> .shiro-db-puppet-peek) { top: auto; right: auto; bottom: 4px; left: 0; }
 @media (prefers-reduced-motion: reduce) {
   .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] :is(.shiro-db-puppet[data-shiro-puppet-pose], .shiro-db-puppet-line),
   .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] :is(.shiro-db-puppet[data-shiro-puppet-pose], .acu-desk-pet__body, .acu-desk-pet__peek, .acu-desk-pet__img) { animation: none; transition: none; }

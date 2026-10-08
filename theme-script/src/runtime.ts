@@ -25,7 +25,7 @@ export function startThemeScript(frame: Window, embeddedPng: string, listenButto
   const stops: (() => void)[] = [];
   const state = { enabled: false, status: '等待数据库界面', error: '' };
   const service = { version: 1, provider: 'helper-script', state, setEnabled };
-  const owner = { provider: 'helper-script', version: '1.2.0', state, dispose };
+  const owner = { provider: 'helper-script', version: '1.2.1', state, dispose };
   registry[ownerKey] = owner;
 
   function inform(): void {
