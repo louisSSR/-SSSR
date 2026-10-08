@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "deliveryMode": "component",
+  "kind": "helper-script",
+  "artifacts": [
+    {
+      "artifactName": "shiro-database-theme",
+      "id": "a4b0c828-cef3-466d-969c-d679a104ab87",
+      "kind": "helper-script",
+      "relativePath": "shiro-database-theme.script.json",
+      "sha256": "f569a59c09ecd69c8309e5098dacf283bb685d126c447f280c86dccad611e67a"
+    }
+  ]
+}

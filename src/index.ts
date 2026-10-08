@@ -6,14 +6,16 @@ import { createController, type Controller } from './controller';
 import { context, MODULE_ID } from './host';
 import { createDatabaseAppearance, type DatabaseAppearance } from './appearance';
 import { observeDatabaseVisibility } from './database-visibility';
+import { createLauncherPosition } from './launcher';
 let mount:HTMLElement|undefined,app:VueApp|undefined,controller:Controller|undefined,settingButton:HTMLButtonElement|undefined;
 let readyListener:(()=>void)|undefined,started=false,disabled=false;
 let stopOpenWatch:WatchStopHandle|undefined,observer:MutationObserver|undefined,returnFocus:HTMLElement|undefined;
 let stopViewport:(()=>void)|undefined;
 let appearance:DatabaseAppearance|undefined,stopDatabaseVisibility:(()=>void)|undefined;
+let launcherPosition:ReturnType<typeof createLauncherPosition>|undefined,resetLauncherButton:HTMLButtonElement|undefined;
 const uiKey=Symbol.for('shiro-butterfly-shop:ui-v1');
 const uiEvent='shiro-butterfly-shop:availability';
-const uiService={version:1,open:(tab:'memory'|'quests')=>{if(!disabled&&controller&&(tab==='memory'||tab==='quests')){controller.state.tab=tab;controller.open();}}};
+const uiService={version:1,open:(tab:'memory'|'quests')=>{if(!disabled&&controller&&(tab==='memory'||tab==='quests')){controller.state.tab=tab;controller.open();}},readMemorySnapshot:(options?:Parameters<Controller['readMemorySnapshot']>[0])=>controller?.readMemorySnapshot(options)??Promise.resolve(null),subscribeMemorySnapshots:(listener:Parameters<Controller['subscribeMemorySnapshots']>[0])=>controller?.subscribeMemorySnapshots(listener)??(()=>{}),exportCompleteMemory:()=>controller?.exportCompleteMemory()??Promise.resolve()};
 const ownerKey=Symbol.for(`${MODULE_ID}:active-mount`);
 const owner={dispose:()=>onDisable()};
 function claimOwnership(){
@@ -52,6 +54,7 @@ function start(){
     if(width<=0||height<=0)return;
     Object.assign(surface.style,{inset:'auto',left:`${viewport?.offsetLeft??0}px`,top:`${viewport?.offsetTop??0}px`,width:`${width}px`,height:`${height}px`});
     surface.toggleAttribute('data-compact-height',height<=480);
+    launcherPosition?.reflow();
     const active=deepestActive();
     if(active&&shadow.contains(active)&&active.matches('input,textarea,select')){
       const scroller=active.closest<HTMLElement>('.modal,.content');
@@ -70,9 +73,12 @@ function start(){
   appearance=createDatabaseAppearance();
   stopDatabaseVisibility=observeDatabaseVisibility(visible=>surface.toggleAttribute('data-native-database-open',visible));
   controller=createController();app=createApp(App,{controller,assetUrl,appearance});app.mount(container);void controller.start();
+  launcherPosition=createLauncherPosition(surface,shadow);
   (globalThis as any)[uiKey]=uiService;document.dispatchEvent(new CustomEvent(uiEvent));
   settingButton=document.createElement('button');settingButton.id=`${MODULE_ID}-settings`;settingButton.className='menu_button';settingButton.textContent='♛ 白 · 蝶翼商店';settingButton.onclick=()=>controller?.open();
   document.querySelector('#extensions_settings2,#extensions_settings')?.append(settingButton);
+  resetLauncherButton=document.createElement('button');resetLauncherButton.id=`${MODULE_ID}-reset-launcher`;resetLauncherButton.className='menu_button';resetLauncherButton.textContent='复位商店入口';resetLauncherButton.title='将可拖动的 Q 版白入口放回默认位置';resetLauncherButton.onclick=()=>launcherPosition?.reset();
+  settingButton.after(resetLauncherButton);
   let focusLayer:HTMLElement|null=null;
   const layerOpeners=new WeakMap<HTMLElement,HTMLElement>();
   const currentLayer=()=>[...shadow.querySelectorAll<HTMLElement>('.modal')].at(-1)??shadow.querySelector<HTMLElement>('.window');
@@ -88,7 +94,7 @@ function start(){
     if(open){returnFocus=deepestActive();void nextTick(focusCurrentLayer);}
     else{focusLayer=null;const previous=returnFocus;returnFocus=undefined;void nextTick(()=>{if(previous?.isConnected)previous.focus();else shadow.querySelector<HTMLButtonElement>('.launcher')?.focus();});}
   },{flush:'sync'});
-  observer=new MutationObserver(()=>focusCurrentLayer());observer.observe(container,{childList:true,subtree:true});
+  observer=new MutationObserver(()=>{launcherPosition?.refresh();focusCurrentLayer();});observer.observe(container,{childList:true,subtree:true});
   // Keyboard handling is owned by this widget, never by host document styles or listeners.
   shadow.addEventListener('keydown',(e:Event)=>{
     const event=e as KeyboardEvent;if(!controller?.state.open)return;
@@ -115,6 +121,7 @@ export function onDisable(){
   disabled=true;const c=context();if(readyListener){c.eventSource.removeListener(c.eventTypes.APP_READY,readyListener);readyListener=undefined;}
   stopOpenWatch?.();stopOpenWatch=undefined;observer?.disconnect();observer=undefined;
   stopViewport?.();stopViewport=undefined;
+  launcherPosition?.dispose();launcherPosition=undefined;resetLauncherButton?.remove();resetLauncherButton=undefined;
   stopDatabaseVisibility?.();stopDatabaseVisibility=undefined;appearance?.dispose();appearance=undefined;
   if((globalThis as any)[uiKey]===uiService){delete (globalThis as any)[uiKey];document.dispatchEvent(new CustomEvent(uiEvent));}
   void controller?.dispose();app?.unmount();mount?.remove();settingButton?.remove();controller=undefined;app=undefined;mount=undefined;settingButton=undefined;started=false;

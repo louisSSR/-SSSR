@@ -5,14 +5,16 @@ import { makeRequest, parseWorldReply, type RequestMode } from './protocol';
 import { appendImpression, registerQuest, transitionQuest } from './journal';
 import { buildMemory } from './memory';
 import { countPrompt, clipUtf8 } from './prompt-budget';
-import { createMemoryTableExport } from './memory-database';
+import { createMemoryTableExport, createCompleteMemoryTableExport, readCompleteMemoryPages, type MemoryPageOptions } from './memory-database';
+import { buildRoundReceipt } from './settlement-view';
 import { discoverDatabaseApi, callDatabaseAI, enableButterflyTables, syncButterflyLedger, createLedgerTableExport } from './database';
 import { MODULE_ID, context, chatIdentity, hasChat, verifiedHandle, storyContext, setLedgerPrompt, download, serverBackup } from './host';
 
 interface Settings {accountId:string;provider:'host'|'database';preset:string;autoWorld:boolean;autoSettle:boolean;worldNotes:string;syncChats:string[];memoryTokenBudget:number}
+export type MemorySnapshotNotice=Readonly<{chat:string;account:string;revision:number}>|null;
 const defaults:Settings={accountId:'',provider:'host',preset:'',autoWorld:true,autoSettle:true,worldNotes:'',syncChats:[],memoryTokenBudget:2048};
 export function createController(){
-  const state=reactive({open:false,tab:'shop',ledger:null as Ledger|null,accounts:[] as Ledger[],handle:'',busy:false,status:'正在连接酒馆…',error:'',notice:'',world:'尚未识别世界',systems:[] as string[],worldEvidence:'',activeIds:[] as string[],goal:'',search:'',category:'全部',affordable:false,settings:{...defaults},selectedQuote:null as Quote|null,quantity:1,accountLabel:'我的本源',importError:'',syncStatus:'当前聊天尚未启用',receipt:'',apiStatus:'待连接',ready:false,memory:null as ReturnType<typeof buildMemory>|null,memoryTokens:0,memoryMethod:'',memoryQuery:'',requestTokens:0,impressionSubject:'',impressionSummary:'',impressionPinned:true});
+  const state=reactive({open:false,tab:'home',ledger:null as Ledger|null,accounts:[] as Ledger[],handle:'',busy:false,status:'正在连接酒馆…',error:'',notice:'',world:'尚未识别世界',systems:[] as string[],worldEvidence:'',activeIds:[] as string[],goal:'',search:'',category:'全部',affordable:false,settings:{...defaults},selectedQuote:null as Quote|null,quantity:1,accountLabel:'我的本源',importError:'',syncStatus:'当前聊天尚未启用',receipt:'',receiptLabel:'最近一笔交易回执',apiStatus:'待连接',ready:false,memory:null as ReturnType<typeof buildMemory>|null,memoryTokens:0,memoryMethod:'',memoryQuery:'',requestTokens:0,impressionSubject:'',impressionSummary:'',impressionPinned:true});
   let store:LedgerStore|undefined,epoch=0,alive=true,key='',timer:ReturnType<typeof setTimeout>|undefined;
   let queue=Promise.resolve();const unsub:(()=>void)[]=[];let channel:BroadcastChannel|undefined;
   const clean=<T>(x:T):T=>JSON.parse(JSON.stringify(x));
@@ -22,6 +24,13 @@ export function createController(){
   const notify=(message:string)=>{state.notice=message;state.error='';};
   const fail=(e:unknown)=>{state.error=e instanceof Error?e.message:String(e);state.status='需要处理';};
   const changed=()=>{channel?.postMessage({accountId:state.settings.accountId});};
+  const snapshotListeners=new Set<(notice:MemorySnapshotNotice)=>void>();
+  const publishSnapshot=()=>{
+    const ledger=state.ledger;
+    const notice=alive&&hasChat()&&ledger&&ledger.accountId===state.settings.accountId?Object.freeze({chat:chatIdentity(),account:ledger.accountId,revision:ledger.revision}):null;
+    for(const listener of snapshotListeners)try{listener(notice);}catch{/* A consumer cannot interrupt ledger or prompt updates. */}
+  };
+  let receiptMark:{account:string;chat:string;revision:number}|undefined;
   let injectionTicket=0;
   const inject=async()=>{
     const ticket=++injectionTicket;
@@ -47,15 +56,21 @@ export function createController(){
     if(!current(m))return;
     state.ledger=l??null;
     state.accounts=await store.list();
-    if(current(m)){inject();state.receipt=l?.transactions.at(-1)?.receipt??'';}
+    if(current(m)){
+      inject();
+      publishSnapshot();
+      if(!l||receiptMark?.account!==m.account||receiptMark.chat!==m.chat||receiptMark.revision!==l.revision){
+        receiptMark=undefined;state.receipt=l?.transactions.at(-1)?.receipt??'';state.receiptLabel='最近一笔交易回执';
+      }
+    }
   }
   async function verify(m:ReturnType<typeof mark>){
     if(!current(m))throw new Error('聊天或本源已切换，本次操作已取消');
     const handle=await verifiedHandle();
-    if(handle!==m.handle){epoch++;injectionTicket++;state.ledger=null;state.memory=null;state.memoryTokens=0;state.accounts=[];state.settings.accountId='';state.selectedQuote=null;state.ready=false;state.busy=false;setLedgerPrompt('');throw new Error('登录账户已变化，已清除本页旧账户资料，请刷新酒馆');}
+    if(handle!==m.handle){epoch++;injectionTicket++;state.ledger=null;state.memory=null;state.memoryTokens=0;state.accounts=[];state.settings.accountId='';state.selectedQuote=null;state.ready=false;state.busy=false;setLedgerPrompt('');publishSnapshot();throw new Error('登录账户已变化，已清除本页旧账户资料，请刷新酒馆');}
     if(!current(m))throw new Error('登录账户或聊天已变化，本次操作已取消');
   }
-  async function run(action:()=>Promise<void>){try{state.error='';await action();}catch(e){if(alive)fail(e);}}
+  async function run(action:()=>Promise<void>,rethrow=false){try{state.error='';await action();}catch(e){if(alive)fail(e);if(rethrow)throw e;}}
   async function sync(m=mark(),force=false){
     if(!store||!m.account||!current(m))return;
     if(!force&&!state.settings.syncChats.includes(m.chat))return;
@@ -108,7 +123,7 @@ export function createController(){
       if(storyContext().stamp!==story.stamp)throw new Error('生成期间故事已变化，本轮结果已丢弃；请重新刷新或结算');
       const reply=parseWorldReply(raw,mode,story.evidence);
       await verify(m);if(!current(m))return;
-      const acceptedIds:string[]=[];
+      const acceptedIds:string[]=[];let roundReceipt='',roundCredits=0;
       const result=await store.transact(m.account,l=>{
         if(!current(m)||storyContext().stamp!==story.stamp)throw new Error('提交前聊天或故事已变化，本轮结果已取消');
         let next=setWorld(l,reply.world.name).ledger;
@@ -122,14 +137,23 @@ export function createController(){
           if(!reply.effects.some(e=>e.resultId===completed.resultId))throw new Error('任务完成必须引用本轮实际因果结果');
           next=transitionQuest(next,{questId:completed.questId,status:'completed',completionEventId:resultAliases.get(completed.resultId)??completed.resultId}).ledger;
         }
+        if(mode==='settle'){roundReceipt=buildRoundReceipt(l,next);roundCredits=next.events.length-l.events.length;}
         return next;
       });
       if(!current(m))return;
+      const worldChanged=state.world!==reply.world.name;
       state.world=reply.world.name;state.systems=reply.world.systems;state.worldEvidence=reply.world.evidence;
-      if(mode==='world')state.activeIds=[BASELINE_QUOTE_ID,...acceptedIds];
+      if(mode==='world'||worldChanged){
+        state.activeIds=[...new Set([BASELINE_QUOTE_ID,...acceptedIds,...(mode==='world'?[]:result.quotes.filter(q=>q.world===reply.world.name).map(q=>q.id))])];
+        state.category='全部';state.selectedQuote=null;
+      }else if(acceptedIds.length)state.activeIds=[...new Set([...state.activeIds,BASELINE_QUOTE_ID,...acceptedIds])];
       state.ledger=result;state.status='已连接';state.apiStatus='API 响应已验证';
-      state.receipt=result.transactions.at(-1)?.receipt??'';inject();changed();await refresh(m);
-      notify(mode==='world'?`已匹配 ${acceptedIds.length} 件世界商品，报价已保存`:mode==='quests'?`白已整理 ${reply.quests.length} 项委托，接取后才列入当前目标`:`本轮新增 ${result.events.length-before.events.length} 笔有效计功；印象与任务已核对`);
+      inject();changed();await refresh(m);if(!current(m))return;
+      if(mode==='settle'){
+        state.receipt=roundReceipt;state.receiptLabel='本次核对完整回执';
+        receiptMark={account:m.account,chat:m.chat,revision:result.revision};
+      }
+      notify(mode==='world'?`已匹配 ${acceptedIds.length} 件世界商品，报价已保存`:mode==='quests'?`白已整理 ${reply.quests.length} 项委托，接取后才列入当前目标`:`本轮新增 ${roundCredits} 笔有效计功；印象与任务已核对`);
       await sync(m);
     }finally{if(current(m))state.busy=false;}
   }
@@ -139,7 +163,7 @@ export function createController(){
   function onChat(){
     epoch++;state.busy=false;state.activeIds=[];state.world=hasChat()?'等待识别当前世界':'请先打开聊天';state.systems=[];state.worldEvidence='';state.selectedQuote=null;state.error='';
     state.syncStatus=state.settings.syncChats.includes(chatIdentity())?'等待同步':'当前聊天尚未启用';
-    inject();void run(()=>refresh());clearTimeout(timer);
+    inject();publishSnapshot();void run(()=>refresh());clearTimeout(timer);
     if(state.ready&&state.settings.accountId&&state.settings.autoWorld&&hasChat()){
       if(state.settings.provider==='host'&&context().onlineStatus==='no_connection'){state.status='等待酒馆 API 连接';}
       else timer=setTimeout(()=>void enqueue('world'),600);
@@ -184,7 +208,7 @@ export function createController(){
     const ledger=await store.create(crypto.randomUUID(),state.accountLabel.trim()||'我的本源');
     epoch++;injectionTicket++;setLedgerPrompt('');state.memory=null;state.ledger=ledger;state.settings.accountId=ledger.accountId;saveSettings();await refresh();onChat();notify('本源已创建，余额从 0 点开始');
   });}
-  async function selectAccount(id:string){epoch++;injectionTicket++;state.ledger=null;state.memory=null;state.memoryTokens=0;setLedgerPrompt('');state.settings.accountId=id;saveSettings();await run(()=>refresh());onChat();}
+  async function selectAccount(id:string){epoch++;injectionTicket++;state.ledger=null;state.memory=null;state.memoryTokens=0;setLedgerPrompt('');state.settings.accountId=id;publishSnapshot();saveSettings();await run(()=>refresh());onChat();}
   async function buy(){await run(async()=>{
     if(!store||!state.selectedQuote)throw new Error('请先选择完整商品规格');
     const m=mark(),quoteId=state.selectedQuote.id,quantity=state.quantity,requestId=crypto.randomUUID();state.busy=true;
@@ -221,6 +245,31 @@ export function createController(){
     download(`蝴蝶四表-记忆快照-${m.account}-${Date.now()}.json`,JSON.stringify(createMemoryTableExport(state.memory,m.account),null,2));
     notify('已导出本次四表记忆快照。完整历史随账本备份保留；原生表默认不重复注入 AI。');
   });}
+  async function readCommittedMemoryLedger(){
+    if(!alive||!store||!state.ready||!state.settings.accountId||!hasChat())return null;
+    const m=mark();await verify(m);const ledger=await store.read(m.account);await verify(m);
+    if(!ledger)return null;
+    if(state.ledger?.accountId===ledger.accountId&&state.ledger.revision>ledger.revision)throw new Error('读取期间账本已更新，请重新读取四表');
+    return {mark:m,scope:{origin:location.origin,handle:m.handle,chat:m.chat,account:m.account},ledger};
+  }
+  async function readMemorySnapshot(options:MemoryPageOptions={}){
+    const value=await readCommittedMemoryLedger();if(!value)return null;
+    if(!current(value.mark))throw new Error('读取期间聊天或本源已切换，请重新读取四表');
+    // A bounded detached page, never the ledger/store or the complete native export.
+    return {version:1 as const,scope:value.scope,revision:value.ledger.revision,updatedAt:value.ledger.updatedAt,tables:readCompleteMemoryPages(value.ledger,options)};
+  }
+  function subscribeMemorySnapshots(listener:(notice:MemorySnapshotNotice)=>void){
+    if(typeof listener!=='function')throw new TypeError('四表订阅需要回调函数');
+    if(!alive)return ()=>{};
+    snapshotListeners.add(listener);
+    return ()=>{snapshotListeners.delete(listener);};
+  }
+  async function exportCompleteMemory(){await run(async()=>{
+    const value=await readCommittedMemoryLedger();if(!value)throw new Error('请先打开聊天并选择本源');
+    if(!current(value.mark))throw new Error('导出前聊天或本源已切换，请重新导出四表');
+    download(`蝴蝶四表-完整业务记录-${value.scope.account}-${Date.now()}.json`,JSON.stringify(createCompleteMemoryTableExport(value.ledger),null,2));
+    notify('已导出完整四表业务记录，不受 AI 摘要预算裁剪。恢复本源仍须使用完整账本备份。');
+  },true);}
   async function taskAction(questId:string,status:'active'|'dismissed'){await run(async()=>{
     if(!store)return;const m=mark();await verify(m);
     await store.transact(m.account,l=>{if(!current(m))throw new Error('聊天或本源已切换');return transitionQuest(l,{questId,status});});
@@ -231,7 +280,7 @@ export function createController(){
     await store.transact(m.account,l=>{if(!current(m))throw new Error('聊天或本源已切换');return appendImpression(l,{id:crypto.randomUUID(),world:l.world,subject,summary,evidence:'使用者手动确认的记忆，不作为自动计功证据。',source:'user',pinned});});
     if(current(m)){state.impressionSubject='';state.impressionSummary='';changed();await refresh(m);notify('重要印象已永久保存；相同对象的旧记录保留在档案中。');}
   });}
-  async function dispose(){alive=false;epoch++;clearTimeout(timer);unsub.forEach(fn=>fn());channel?.close();try{setLedgerPrompt('');}catch{}await store?.close();}
-  return {state,start,dispose,createAccount,selectAccount,buy,inventoryAction,enableTables,exportLedger,importLedger,exportTables,exportMemory,taskAction,saveImpression,refreshMemory:()=>run(()=>inject()),saveSettings,refresh:()=>run(()=>refresh()),generateWorld:()=>enqueue('world'),dispatchTasks:()=>enqueue('quests'),settle:()=>enqueue('settle'),sync:()=>run(()=>sync(mark(),true)),downloadReceipt:()=>download('WJWK-settle.txt',state.receipt,'text/plain'),open:()=>{state.open=true;void inject();},close:()=>{state.open=false;state.selectedQuote=null;}};
+  async function dispose(){alive=false;epoch++;publishSnapshot();snapshotListeners.clear();clearTimeout(timer);unsub.forEach(fn=>fn());channel?.close();try{setLedgerPrompt('');}catch{}await store?.close();}
+  return {state,start,dispose,createAccount,selectAccount,buy,inventoryAction,enableTables,exportLedger,importLedger,exportTables,exportMemory,exportCompleteMemory,readMemorySnapshot,subscribeMemorySnapshots,taskAction,saveImpression,refreshMemory:()=>run(()=>inject()),saveSettings,refresh:()=>run(()=>refresh()),generateWorld:()=>enqueue('world'),dispatchTasks:()=>enqueue('quests'),settle:()=>enqueue('settle'),sync:()=>run(()=>sync(mark(),true)),downloadReceipt:()=>download('WJWK-settle.txt',state.receipt,'text/plain'),open:()=>{state.open=true;void inject();},close:()=>{state.open=false;state.selectedQuote=null;}};
 }
 export type Controller=ReturnType<typeof createController>;
