@@ -59,7 +59,7 @@
       "owner": "provider",
       "symbol": "AutoCardUpdaterAPI.applyChatBoundProjection",
       "required": false,
-      "fallback": "原版数据库使用原生六表导出导入；不回退到未绑定聊天的CRUD。"
+      "fallback": "原版数据库使用完整四表JSON独立导出导入；与新版主题组合时提供数据库内只读实时四表，不回退到未绑定聊天的CRUD。"
     },
     {
       "id": "database-generation",

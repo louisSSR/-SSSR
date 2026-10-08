@@ -177,6 +177,52 @@
 }
 .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-shortcut:hover { background: #e3def7; border-color: #9a8dc2; }
 .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-shortcut:focus-visible { outline: 2px solid #6552ad; outline-offset: 2px; }
+/* The live four-table view occupies document flow; it never overlays native save controls. */
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory {
+  display: flex; flex-direction: column; flex: 0 1 auto; min-width: 0; min-height: 0;
+  max-height: min(360px, calc(var(--shiro-db-viewport-height, 100dvh) * .42));
+  border-block: 1px solid #ccd4eb; background: #fafbff; color: #293554; overflow: hidden;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-summary {
+  appearance: none; flex: 0 0 auto; width: 100%; min-height: 44px; padding: 8px 12px;
+  border: 0; background: #efedfb; color: #4b407a; font: 600 13px/1.4 system-ui, sans-serif;
+  text-align: left; cursor: pointer; touch-action: manipulation;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-body {
+  min-width: 0; min-height: 0; padding: 8px 12px; overflow: auto; overscroll-behavior: contain;
+  font: 13px/1.5 system-ui, sans-serif;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-body[hidden] { display: none; }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] :is(.shiro-db-memory-status, .shiro-db-memory-scope, .shiro-db-memory-note) {
+  margin: 0 0 6px; overflow-wrap: anywhere; color: #596584;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] :is(.shiro-db-memory-search, .shiro-db-memory-controls) {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 6px 0; min-width: 0;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-search input {
+  flex: 1 1 130px; width: 100%; min-width: 0; min-height: 44px; padding: 7px 8px; box-sizing: border-box;
+  border: 1px solid #c4cce6; border-radius: 8px; background: #fff; color: #293554; font: 16px/1.4 system-ui, sans-serif;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-tabs {
+  display: flex; gap: 6px; overflow-x: auto; min-width: 0; margin-block: 6px; overscroll-behavior: contain;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-tab { flex: 0 0 auto; }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-body button {
+  appearance: none; min-width: 44px; min-height: 44px; padding: 6px 9px; border: 1px solid #c4cce6;
+  border-radius: 8px; background: #fff; color: #4b407a; font: 600 12px/1.4 system-ui, sans-serif;
+  cursor: pointer; touch-action: manipulation;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-tab[aria-pressed="true"] { background: #e5e0f8; border-color: #a49aca; }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory button:disabled { opacity: .55; cursor: default; }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory :is(button, input, .shiro-db-memory-results):focus-visible { outline: 2px solid #6552ad; outline-offset: -2px; }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-results { min-width: 0; overflow: auto; overscroll-behavior: contain; }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-table { width: 100%; border-collapse: collapse; font: inherit; }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-table caption { padding: 5px; text-align: left; font-weight: 700; }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-table :is(th, td) {
+  min-width: 90px; max-width: 320px; padding: 6px 8px; border: 1px solid #d2d9ed; vertical-align: top;
+  text-align: left; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-memory-table th { background: #edf0fb; }
 .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-notices { display: none; }
 .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] :is(.acu-v2-sidebar__brand, .acu-visualizer-nav__brand) {
   border-bottom: 1px solid #ccd7ef;
@@ -427,8 +473,13 @@
 }
 .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] .shiro-db-puppet-line[hidden] { display: none; }
 @keyframes shiro-db-puppet-line-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+.acu-v2-app[data-shiro-database-theme="blank-chess-v1"][data-shiro-puppet-quiet="true"] .shiro-db-puppet,
 .acu-v2-app[data-shiro-database-theme="blank-chess-v1"] [data-shiro-puppet-quiet="true"] .shiro-db-puppet,
 .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] .shiro-db-puppet[data-shiro-puppet-quiet="true"] { animation: none; transition: none; transform: none; }
+/* The native breathing/peek parent moves our overlay too. Pause in place while
+   quiet, so its current animated transform and native dragging geometry survive. */
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__body:has(> .acu-desk-pet__flip > .shiro-db-puppet-body[data-shiro-puppet-quiet="true"]),
+.acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__peek:has(> .shiro-db-puppet-peek[data-shiro-puppet-quiet="true"]) { animation-play-state: paused; }
 /* Native img sources and gestures stay untouched. An owned span covers one square frame;
    opacity keeps the latest native pose and its original geometry available for restoration. */
 .acu-desk-pet-layer[data-shiro-database-companion="blank-chess-v1"] > .acu-desk-pet > .acu-desk-pet__body > .acu-desk-pet__flip:has(> .shiro-db-puppet-body),

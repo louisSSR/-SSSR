@@ -1,4 +1,5 @@
 import { mountDatabaseTheme, type DatabaseThemeMount } from './database-theme';
+import type { MemorySnapshotSource, MemorySnapshotNotice } from './memory-view';
 
 export type ListenButton = (name: string, listener: () => void) => { stop: () => void };
 export const SCRIPT_OWNER_KEY = 'shiro-database-theme:helper-script-owner';
@@ -20,10 +21,11 @@ export function startThemeScript(frame: Window, embeddedPng: string, listenButto
   if (old?.provider === 'helper-script' && typeof old.dispose === 'function') old.dispose();
   let renderer: DatabaseThemeMount | undefined, panel: HTMLElement | undefined;
   let disposed = false, publishing = false;
+  let connectedShop: unknown;
   const stops: (() => void)[] = [];
   const state = { enabled: false, status: '等待数据库界面', error: '' };
   const service = { version: 1, provider: 'helper-script', state, setEnabled };
-  const owner = { provider: 'helper-script', version: '1.1.0', state, dispose };
+  const owner = { provider: 'helper-script', version: '1.2.0', state, dispose };
   registry[ownerKey] = owner;
 
   function inform(): void {
@@ -44,6 +46,7 @@ export function startThemeScript(frame: Window, embeddedPng: string, listenButto
   }
   function blockConflict(): void {
     renderer?.dispose(); renderer = undefined;
+    connectedShop = undefined;
     state.enabled = false; state.error = CONFLICT; state.status = '主题脚本待命';
     if (registry[themeKey] === service) delete registry[themeKey];
     publish();
@@ -51,9 +54,20 @@ export function startThemeScript(frame: Window, embeddedPng: string, listenButto
   function refreshShop(): void {
     if (disposed) return;
     const shop = registry[Symbol.for(SHOP_KEY)];
+    if (!renderer || connectedShop === shop) return;
+    connectedShop = shop;
     renderer?.setNavigate(shop?.version === 1 && typeof shop.open === 'function'
       ? tab => { const live = registry[Symbol.for(SHOP_KEY)]; if (!disposed && live?.version === 1 && typeof live.open === 'function') live.open(tab); }
       : undefined);
+    const memory: MemorySnapshotSource | undefined = shop?.version === 1 &&
+      typeof shop.readMemorySnapshot === 'function' && typeof shop.subscribeMemorySnapshots === 'function' && typeof shop.exportCompleteMemory === 'function'
+      ? {
+          readMemorySnapshot: options => registry[Symbol.for(SHOP_KEY)] === shop && !disposed ? shop.readMemorySnapshot(options) : Promise.resolve(null),
+          subscribeMemorySnapshots: listener => shop.subscribeMemorySnapshots((notice: MemorySnapshotNotice) => { if (!disposed && registry[Symbol.for(SHOP_KEY)] === shop) listener(notice); }),
+          exportCompleteMemory: () => registry[Symbol.for(SHOP_KEY)] === shop && !disposed ? shop.exportCompleteMemory() : Promise.reject(new Error('商店已停用')),
+        }
+      : undefined;
+    renderer.setMemorySource(memory);
   }
   function setEnabled(next: boolean): void {
     if (disposed) return;

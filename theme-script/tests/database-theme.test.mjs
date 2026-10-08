@@ -12,11 +12,14 @@ const css = readFileSync(new URL('../src/database-theme.css', import.meta.url), 
 const puppetOutput = ts.transpileModule(readFileSync(new URL('../src/puppet.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
 const puppetModule = { exports: {} };
 new Function('require', 'module', 'exports', puppetOutput)(require, puppetModule, puppetModule.exports);
+const memoryOutput = ts.transpileModule(readFileSync(new URL('../src/memory-view.ts', import.meta.url), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+const memoryModule = { exports: {} };
+new Function('require', 'module', 'exports', memoryOutput)(require, memoryModule, memoryModule.exports);
 const output = ts.transpileModule(readFileSync(new URL('../src/database-theme.ts', import.meta.url), 'utf8'), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
 }).outputText;
 const module = { exports: {} };
-new Function('require', 'module', 'exports', output)(name => name === './database-theme.css' ? { __esModule: true, default: css } : name === './puppet' ? puppetModule.exports : require(name), module, module.exports);
+new Function('require', 'module', 'exports', output)(name => name === './database-theme.css' ? { __esModule: true, default: css } : name === './puppet' ? puppetModule.exports : name === './memory-view' ? memoryModule.exports : require(name), module, module.exports);
 const { databaseThemeAsset, mountDatabaseTheme } = module.exports;
 const marker = '[data-shiro-database-theme]';
 const native = `<div class="acu-v2-app"><div class="acu-v2-app__shell"><div class="acu-v2-app__body"><nav class="acu-v2-sidebar"><div class="acu-v2-sidebar__brand"><button class="acu-v2-sidebar__brand-title">奶数据库</button></div><button class="acu-v2-sidebar__item">工作台</button></nav><div class="acu-v2-app__content"><header class="acu-v2-app__header"><div class="acu-v2-app__header-left"><h1>填表工作台</h1></div><div class="acu-v2-app__header-right"><button>关闭新 UI</button></div></header><main class="acu-v2-main"><textarea>原始数据</textarea></main></div></div></div></div>`;
@@ -118,29 +121,94 @@ test('duplicate load disposes old observer; an old disposer cannot remove new de
   newer.dispose(); f.dom.window.close();
 });
 
+test('quiet pauses header, sidebar and native companion together; late headers inherit it and resume restores all blinks', async () => {
+  const f = fixture(), layer = f.doc.createElement('div'); layer.className = 'acu-desk-pet-layer';
+  layer.innerHTML = '<div class="acu-desk-pet"><div class="acu-desk-pet__body"><div class="acu-desk-pet__flip"><img class="acu-desk-pet__img pose-idle" src="/native.png"></div></div></div>';
+  f.doc.body.append(layer); await flush();
+  const animation = sprite => f.dom.window.getComputedStyle(sprite).animation;
+  const sprites = () => [...f.doc.querySelectorAll('.shiro-db-puppet')];
+  assert.equal(sprites().length, 3);
+  assert.ok(sprites().every(sprite => /shiro-db-puppet-blink/.test(animation(sprite))));
+  const quietButton = f.doc.querySelector('.shiro-db-puppet-quiet'); quietButton.click();
+  assert.equal(quietButton.textContent, '让白说话');
+  assert.ok(sprites().every(sprite => animation(sprite) === 'none'), 'header, sidebar and native span must all pause');
+  f.doc.querySelector('.shiro-db-masthead').remove(); await flush();
+  assert.equal(f.doc.querySelectorAll('.shiro-db-masthead').length, 1);
+  assert.equal(animation(f.doc.querySelector('.shiro-db-masthead .shiro-db-puppet')), 'none');
+  const late = f.doc.createElement('div'); late.innerHTML = native; f.doc.body.append(late); await flush();
+  assert.equal(sprites().length, 5);
+  assert.ok(sprites().every(sprite => animation(sprite) === 'none'), 'late root and sidebar must inherit quiet');
+  quietButton.click();
+  assert.ok(sprites().every(sprite => /shiro-db-puppet-blink/.test(animation(sprite))), 'resume must restore all idle blinks');
+  assert.ok([...f.doc.querySelectorAll('.shiro-db-puppet-quiet')].every(button => button.textContent === '安静一会儿'));
+  f.mount.setEnabled(false);
+  assert.equal(f.doc.querySelector('[data-shiro-puppet-quiet]'), null);
+  assert.equal(f.doc.querySelector('.shiro-db-puppet'), null);
+  assert.equal(layer.querySelector('img').getAttribute('src'), '/native.png');
+  quietButton.click(); assert.equal(f.doc.querySelector('[data-shiro-puppet-quiet]'), null, 'detached old control cannot restore a marker');
+  f.mount.dispose(); f.dom.window.close();
+});
+
 test('optional native shortcut buttons navigate live views and vanish fully when disabled', async () => {
   const f = fixture(), calls = [];
   assert.equal(f.doc.querySelectorAll('.shiro-db-shortcut').length, 0);
   const navigate = tab => calls.push(tab);
   const mounted = mountDatabaseTheme({ ...f.options, onNavigate: navigate });
   const buttons = [...f.doc.querySelectorAll('.shiro-db-shortcut')];
-  assert.deepEqual(buttons.map(button => button.textContent), ['蝴蝶四表', '白的委托']);
+  assert.deepEqual(buttons.map(button => button.textContent), ['白的委托']);
   assert.ok(buttons.every(button => button.tagName === 'BUTTON' && button.type === 'button' && button.tabIndex === 0));
   assert.equal(buttons[0].parentElement.previousElementSibling.className, 'shiro-db-portrait');
   assert.equal(buttons[0].parentElement.nextElementSibling.className, 'shiro-db-notices');
   assert.equal(buttons[0].parentElement.nextElementSibling.nextElementSibling.className, 'acu-v2-sidebar__brand');
-  buttons[0].click(); buttons[1].click();
-  assert.deepEqual(calls, ['memory', 'quests']);
+  buttons[0].click();
+  assert.deepEqual(calls, ['quests']);
   f.doc.querySelector('#acu-app-v2').innerHTML = native;
   await flush();
-  assert.equal(f.doc.querySelectorAll('.shiro-db-shortcut').length, 2);
-  f.doc.querySelector('[data-shiro-tab="memory"]').click();
-  assert.deepEqual(calls, ['memory', 'quests', 'memory']);
+  assert.equal(f.doc.querySelectorAll('.shiro-db-shortcut').length, 1);
+  f.doc.querySelector('[data-shiro-tab="quests"]').click();
+  assert.deepEqual(calls, ['quests', 'quests']);
   mounted.setEnabled(false);
   buttons[0].click(); // A detached reference cannot navigate after disposal/disable.
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 2);
   assert.equal(f.doc.documentElement.outerHTML, f.before);
   mounted.dispose(); f.dom.window.close();
+});
+
+test('quiet pauses owned native breathing and peek ancestors in place, resumes them, and leaves foreign motion/geometry untouched', async () => {
+  const f = fixture(), nativeStyle = f.doc.createElement('style'); nativeStyle.id = 'native-motion-lifecycle';
+  nativeStyle.textContent = '.acu-desk-pet__body.is-breathing {animation: native-breathe 3s infinite; animation-play-state: running;} .acu-desk-pet__peek {animation: native-peek 4s infinite; animation-play-state: running;}'; f.doc.head.append(nativeStyle);
+  const layer = f.doc.createElement('div'); layer.className = 'acu-desk-pet-layer';
+  layer.innerHTML = '<div class="acu-desk-pet"><div class="acu-desk-pet__body is-breathing" style="transform:translate(3px, 4px)"><div class="acu-desk-pet__flip"><img class="acu-desk-pet__img" src="/native.png"></div></div><div class="acu-desk-pet__peek" style="transform:translateX(7px);width:36px;height:64px"><img class="acu-desk-pet__peek-img" src="/native-peek.png" style="width:64px;height:64px;left:-14px;top:0px"></div></div>';
+  const native = layer.outerHTML; f.doc.body.append(layer);
+  const foreign = f.doc.createElement('div'); foreign.className = 'acu-desk-pet__body is-breathing'; f.doc.body.append(foreign); await flush();
+  const body = layer.querySelector('.acu-desk-pet__body'), peek = layer.querySelector('.acu-desk-pet__peek');
+  const before = [body.getAttribute('style'), peek.getAttribute('style'), ...[...layer.querySelectorAll('img')].map(img => img.getAttribute('src'))];
+  const state = node => f.dom.window.getComputedStyle(node).animationPlayState;
+  assert.equal(state(body), 'running'); assert.equal(state(peek), 'running');
+  const quiet = f.doc.querySelector('.shiro-db-puppet-quiet'); quiet.click();
+  assert.equal(state(body), 'paused'); assert.equal(state(peek), 'paused'); assert.equal(state(foreign), 'running');
+  assert.equal(f.dom.window.getComputedStyle(body).animation, 'native-breathe 3s infinite'); assert.equal(f.dom.window.getComputedStyle(peek).animation, 'native-peek 4s infinite');
+  assert.equal(f.dom.window.getComputedStyle(body).transform, 'translate(3px, 4px)'); assert.equal(f.dom.window.getComputedStyle(peek).transform, 'translateX(7px)');
+  assert.deepEqual([body.getAttribute('style'), peek.getAttribute('style'), ...[...layer.querySelectorAll('img')].map(img => img.getAttribute('src'))], before);
+  quiet.click(); assert.equal(state(body), 'running'); assert.equal(state(peek), 'running');
+  quiet.click(); f.mount.setEnabled(false); assert.equal(state(body), 'running'); assert.equal(state(peek), 'running'); assert.equal(layer.outerHTML, native);
+  f.mount.dispose(); f.dom.window.close();
+});
+
+test('database-local four tables occupy flow after the native header, retain original inputs/saves and unsubscribe on theme off/remount', async () => {
+  const f = fixture(), listeners = new Set(); let reads = 0, stops = 0, navigations = 0;
+  const source = { async readMemorySnapshot() { reads++; return { version: 1, scope: { origin: 'http://localhost:8000', handle: 'user', account: 'account', chat: 'chat' }, revision: 3, updatedAt: '2026-10-08T08:00:00Z', tables: ['impressions', 'accounts', 'inventory', 'ripples'].map(key => ({ key, title: key, columns: ['内容'], rows: [[`真实${key}`]], recordIds: [key], total: 1, offset: 0, limit: 50 })) }; }, subscribeMemorySnapshots(listener) { listeners.add(listener); return () => { stops++; listeners.delete(listener); }; }, async exportCompleteMemory() {} };
+  const input = f.doc.querySelector('textarea'), nativeHeader = f.doc.querySelector('.acu-v2-app__header');
+  f.mount.setMemorySource(source); f.mount.setNavigate(() => navigations++);
+  assert.equal(nativeHeader.nextElementSibling.className, 'shiro-db-memory'); assert.equal(f.doc.querySelector('.shiro-db-memory').nextElementSibling.className, 'acu-v2-main'); assert.equal(listeners.size, 1);
+  f.doc.querySelector('[data-shiro-tab="memory"]').click(); await flush(); assert.equal(navigations, 0); assert.equal(reads, 1); assert.match(f.doc.querySelector('.shiro-db-memory tbody').textContent, /真实impressions/);
+  assert.equal(f.doc.querySelector('textarea'), input); assert.equal(input.value, '原始数据');
+  f.mount.setEnabled(false); assert.equal(listeners.size, 0); assert.equal(stops, 1); assert.equal(f.doc.documentElement.outerHTML, f.before);
+  f.mount.setEnabled(true); assert.equal(listeners.size, 1); assert.equal(f.doc.querySelector('.shiro-db-memory-body').hidden, true);
+  f.doc.querySelector('.acu-v2-sidebar').remove(); f.doc.querySelector('.acu-v2-app__content').innerHTML = visualizer; await flush();
+  assert.equal(listeners.size, 1); assert.equal(f.doc.querySelectorAll('.shiro-db-memory').length, 1); assert.ok(f.doc.querySelector('.acu-visualizer-surface__topbar + .shiro-db-memory')); assert.equal(f.doc.querySelector('textarea').value, '保留表格');
+  f.mount.setMemorySource(undefined); assert.equal(listeners.size, 0); assert.equal(f.doc.querySelector('.shiro-db-memory'), null); assert.equal(f.doc.querySelector('[data-shiro-tab="memory"]'), null); assert.ok(f.doc.querySelector('[data-shiro-tab="quests"]'));
+  f.mount.dispose(); f.dom.window.close();
 });
 
 test('every CSS rule is scoped; only named puppet motion is added and respects reduced motion', () => {

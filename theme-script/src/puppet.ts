@@ -30,7 +30,7 @@ export function createPuppetSprite(doc: Document, imageUrl: string, className: s
 }
 
 export interface PuppetCompanion { sync(): void; dispose(): void }
-export function createPuppetPresentation(doc: Document, imageUrl: string) {
+export function createPuppetPresentation(doc: Document, imageUrl: string, onQuiet?: (quiet: boolean) => void) {
   const win = doc.defaultView!;
   let disposed = false, quiet = false, lineIndex = 0, lastJoke = -Infinity;
   const portraits = new Set<{ node: HTMLElement; sprite: HTMLElement; joke: HTMLElement; jokeButton: HTMLButtonElement; avatarButton: HTMLButtonElement; quietButton: HTMLButtonElement; timer?: number; dispose(): void }>();
@@ -59,6 +59,7 @@ export function createPuppetPresentation(doc: Document, imageUrl: string) {
   }
   function setQuiet(value: boolean): void {
     quiet = value;
+    onQuiet?.(quiet);
     for (const record of portraits) {
       record.node.dataset.shiroPuppetQuiet = String(quiet);
       record.quietButton.textContent = quiet ? '让白说话' : '安静一会儿';

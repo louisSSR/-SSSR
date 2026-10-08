@@ -18,7 +18,8 @@ function compile(file, imports = {}, extra = {}) {
   return mod.exports;
 }
 const puppet = compile('puppet');
-const renderer = compile('database-theme', { './puppet': puppet, './database-theme.css': { __esModule: true, default: readFileSync(new URL('../src/database-theme.css', import.meta.url), 'utf8') } });
+const memoryView = compile('memory-view');
+const renderer = compile('database-theme', { './puppet': puppet, './memory-view': memoryView, './database-theme.css': { __esModule: true, default: readFileSync(new URL('../src/database-theme.css', import.meta.url), 'utf8') } });
 const { startThemeScript } = compile('runtime', { './database-theme': renderer });
 function fixture() {
   const dom = new JSDOM(`<!doctype html><html><head></head><body><div id="extensions_settings2"></div>${native}</body></html>`, { url: 'http://localhost:18006/' });
@@ -64,10 +65,28 @@ test('optional shop links discover both load orders and disappear on shop disabl
     if (first) f.host[shopKey] = shop;
     const s = f.script();
     if (!first) { assert.equal(f.doc.querySelectorAll('.shiro-db-shortcut').length, 0); f.host[shopKey] = shop; f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability')); }
-    f.doc.querySelector('[data-shiro-tab="memory"]').click(); assert.deepEqual(calls, ['memory']);
+    assert.equal(f.doc.querySelector('[data-shiro-tab="memory"]'), null, 'an old shop without snapshots must not claim a live four-table view');
+    f.doc.querySelector('[data-shiro-tab="quests"]').click(); assert.deepEqual(calls, ['quests']);
     delete f.host[shopKey]; f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability'));
     assert.equal(f.doc.querySelectorAll('.shiro-db-shortcut').length, 0);
     s.owner.dispose(); f.dom.window.close();
+  }
+});
+
+test('optional committed four-table service discovers both load orders, stays inside database, and clears on service disable/pagehide', async () => {
+  for (const first of [true, false]) {
+    const f = fixture(), calls = [], listeners = new Set(); let stops = 0;
+    const shop = { version: 1, open: tab => calls.push(tab), async readMemorySnapshot() { return { version: 1, scope: { origin: 'http://localhost:18006', handle: 'user', chat: 'chat', account: 'account' }, revision: 12, updatedAt: '2026-10-08T08:00:00Z', tables: ['impressions', 'accounts', 'inventory', 'ripples'].map(key => ({ key, title: key, columns: ['内容'], rows: [[`实际${key}`]], recordIds: [key], total: 1, offset: 0, limit: 50 })) }; }, subscribeMemorySnapshots(listener) { listeners.add(listener); return () => { stops++; listeners.delete(listener); }; }, async exportCompleteMemory() {} };
+    if (first) f.host[shopKey] = shop;
+    const s = f.script();
+    if (!first) { assert.equal(f.doc.querySelector('.shiro-db-memory'), null); f.host[shopKey] = shop; f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability')); }
+    assert.equal(listeners.size, 1); f.doc.querySelector('[data-shiro-tab="memory"]').click(); await new Promise(resolve => setImmediate(resolve));
+    assert.match(f.doc.querySelector('.shiro-db-memory tbody').textContent, /实际impressions/); assert.deepEqual(calls, []);
+    f.doc.querySelector('[data-shiro-tab="quests"]').click(); assert.deepEqual(calls, ['quests']);
+    f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability')); assert.equal(listeners.size, 1, 'same service availability cannot create a duplicate subscription');
+    delete f.host[shopKey]; f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability')); assert.equal(listeners.size, 0); assert.equal(stops, 1); assert.equal(f.doc.querySelector('.shiro-db-memory'), null); assert.equal(f.doc.querySelector('[data-shiro-tab="memory"]'), null);
+    f.host[shopKey] = shop; f.doc.dispatchEvent(new f.host.CustomEvent('shiro-butterfly-shop:availability')); assert.equal(listeners.size, 1);
+    s.frame.dispatchEvent(new s.frame.Event('pagehide')); assert.equal(listeners.size, 0); assert.equal(stops, 2); assert.equal(f.doc.querySelector('.shiro-db-memory'), null); f.dom.window.close();
   }
 });
 

@@ -15,7 +15,7 @@ let appearance:DatabaseAppearance|undefined,stopDatabaseVisibility:(()=>void)|un
 let launcherPosition:ReturnType<typeof createLauncherPosition>|undefined,resetLauncherButton:HTMLButtonElement|undefined;
 const uiKey=Symbol.for('shiro-butterfly-shop:ui-v1');
 const uiEvent='shiro-butterfly-shop:availability';
-const uiService={version:1,open:(tab:'memory'|'quests')=>{if(!disabled&&controller&&(tab==='memory'||tab==='quests')){controller.state.tab=tab;controller.open();}}};
+const uiService={version:1,open:(tab:'memory'|'quests')=>{if(!disabled&&controller&&(tab==='memory'||tab==='quests')){controller.state.tab=tab;controller.open();}},readMemorySnapshot:(options?:Parameters<Controller['readMemorySnapshot']>[0])=>controller?.readMemorySnapshot(options)??Promise.resolve(null),subscribeMemorySnapshots:(listener:Parameters<Controller['subscribeMemorySnapshots']>[0])=>controller?.subscribeMemorySnapshots(listener)??(()=>{}),exportCompleteMemory:()=>controller?.exportCompleteMemory()??Promise.resolve()};
 const ownerKey=Symbol.for(`${MODULE_ID}:active-mount`);
 const owner={dispose:()=>onDisable()};
 function claimOwnership(){
