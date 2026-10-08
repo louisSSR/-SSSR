@@ -95,8 +95,8 @@
     },
     {
       "path": "docs/acceptance.md",
-      "bytes": 3032,
-      "sha256": "f25dda399473e0d9e3022320cb764d726a557f04cd903ec027294efa46058a23"
+      "bytes": 3418,
+      "sha256": "6a6d9704a7515c122e42aae05e638ac4d4ba410659dd0001311254e32406b7d3"
     },
     {
       "path": "docs/database-update-contract-v1.1.1.md",
@@ -125,8 +125,8 @@
     },
     {
       "path": "docs/upstream-contract.md",
-      "bytes": 14376,
-      "sha256": "fd36c7a71223e45cb973dac87a8c97f7a68571c637ecf64bd2d3919ebe6d2ba9"
+      "bytes": 14894,
+      "sha256": "27a97f3d188172063b3f3dea0efbe9be039b6dfb9c0257c2f474bcd4c1f4dcc9"
     },
     {
       "path": "docs/v1.0-安装与规则存档.md",

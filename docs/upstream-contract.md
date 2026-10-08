@@ -1,5 +1,7 @@
 # 数据库适配与原生主题契约
 
+> 历史契约：下文记录早期六表投影、原生配色与兼容分叉实验，已被商店2.0.0的原生四表设计替代。当前安装使用未修改官方数据库、独立白主题1.3.0脚本和四表v2空模板，无需安装下文的兼容数据库。当前权威说明为[README](../README.md)、[分别更新契约](database-update-contract.md)、[四表安装](four-tables-install.md)和[2.0.0验收](acceptance-v2.0.0.md)。固定上游源码引用及旧实验原文仅作为历史资料保留。
+
 本插件基于用户指定的 [AlbusKen/shujuku](https://github.com/AlbusKen/shujuku)；已核固定源码为 `1a5ffdb3ef8817452c370c6cfef7cac86683d7cc`，其 `manifest.json` 显示 **龙血玄黄·数据库 1.2.5**。`package.json` 的开发包版本仍为 1.0.0，不能用它代替插件版本。上游插件版和酒馆助手脚本版在该源码中共用 `AutoCardUpdaterAPI`，宿主窗口发现方式不同。本适配器运行在 SillyTavern 扩展主窗口，不扫描任意 iframe。
 
 这是一份源码契约与隔离验证记录。它不代表已在用户酒馆安装、调用收费模型、修改聊天或完成人工验收。
